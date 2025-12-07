@@ -4,8 +4,13 @@ import os
 from datetime import datetime
 import pytz 
 
-# --- 1. CONFIGURAÇÃO ---
-st.set_page_config(page_title="Logística App", page_icon="🚛", layout="centered")
+# --- 1. CONFIGURAÇÃO (Barra lateral expandida por padrão) ---
+st.set_page_config(
+    page_title="Logística App", 
+    page_icon="🚛", 
+    layout="centered", 
+    initial_sidebar_state="collapsed" # Começa fechado para dar espaço, mas o botão estará lá
+)
 
 # ==========================================
 # 🔐 ADMINS
@@ -16,16 +21,17 @@ ADMINS = {
     "Escritório": "office99",
 }
 
-# --- 2. ESTILO CSS (VISUAL APP PREMIUM) ---
+# --- 2. ESTILO CSS (CORRIGIDO PARA O MENU) ---
 st.markdown("""
 <style>
-    #MainMenu, footer, header {visibility: hidden;}
-    .block-container {padding-top: 0.5rem; padding-bottom: 2rem;}
+    /* GARANTIR QUE O BOTÃO DO MENU E CABEÇALHO APARECEM */
+    #MainMenu {visibility: visible !important;}
+    header {visibility: visible !important;}
+    footer {visibility: hidden;}
     
-    /* Menu Lateral */
-    section[data-testid="stSidebar"] { background-color: #f8f9fa; }
+    .block-container {padding-top: 2rem; padding-bottom: 3rem;}
     
-    /* CABEÇALHO */
+    /* Cabeçalho Azul */
     .header-box {
         background: linear-gradient(90deg, #004aad 0%, #0066cc 100%);
         padding: 12px;
@@ -39,7 +45,7 @@ st.markdown("""
     .header-title { font-size: 18px; font-weight: bold; margin: 0; line-height: 1; }
     .header-date { font-size: 12px; opacity: 0.9; margin: 0; font-weight: normal; }
     
-    /* CARTÃO MOTORISTA */
+    /* Cartão Motorista */
     .driver-card {
         background-color: white;
         border-left: 5px solid #004aad;
@@ -52,7 +58,7 @@ st.markdown("""
     .driver-icon { font-size: 20px; }
     .driver-name { font-size: 16px; font-weight: bold; color: #333; }
     
-    /* GRELHA VEÍCULO (2x2) - O SEGREDO DO ESPAÇO */
+    /* Grelha Veículo */
     .vehicle-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -68,10 +74,8 @@ st.markdown("""
     .vehicle-label { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; }
     .vehicle-val { font-size: 14px; font-weight: bold; color: #004aad; }
     
-    /* BLOCOS DE HORÁRIO */
-    .time-container {
-        display: flex; gap: 5px; margin-bottom: 8px;
-    }
+    /* Horários */
+    .time-container { display: flex; gap: 5px; margin-bottom: 8px; }
     .time-block {
         flex: 1;
         background-color: #f8f9fa;
@@ -84,7 +88,7 @@ st.markdown("""
     .time-value { font-size: 20px; font-weight: bold; color: #333; margin: 2px 0; line-height: 1; }
     .location-text { font-size: 12px; font-weight: 900; text-transform: uppercase; margin: 0; }
     
-    /* BARRA FINA (STATUS) */
+    /* Barra Fina */
     .info-row { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
     .info-item { flex: 1; text-align: center; padding: 4px; border-radius: 4px; color: white; display: flex; flex-direction: column; justify-content: center; }
     .info-item-retorno { flex: 1; text-align: center; padding: 4px; border-radius: 4px; background-color: white; border: 1px solid #ddd; display: flex; flex-direction: column; justify-content: center; }
@@ -96,10 +100,8 @@ st.markdown("""
     .bg-purple { background-color: #7b1fa2; } 
     .bg-green { background-color: #2e7d32; }
     
-    /* Separador */
     .rota-separator { text-align: center; margin: 15px 0 5px 0; font-size: 0.8rem; font-weight: bold; color: #004aad; background-color: #e3f2fd; padding: 4px; border-radius: 4px; }
     
-    /* Ajustes Gerais */
     div[data-testid="stTextInput"] { margin-bottom: 0px; }
     button[kind="primary"] { width: 100%; border-radius: 8px; }
 </style>
@@ -154,7 +156,12 @@ if menu == "🚛 Minha Escala":
         <div><div class="header-title">Minha Escala</div><div class="header-date">{dia_sem}, {data_hoje}</div></div>
     </div>
     """, unsafe_allow_html=True)
-
+    
+    # Aviso se o menu estiver escondido (Ajuda visual)
+    if 'menu_aviso' not in st.session_state:
+        st.session_state['menu_aviso'] = True
+    
+    # Input de VPN
     if df_rotas is not None:
         with st.form(key='busca_rotas'):
             vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Digite a VPN...")
@@ -167,7 +174,7 @@ if menu == "🚛 Minha Escala":
                 for i, (idx, row) in enumerate(res.iterrows()):
                     if total > 1: st.markdown(f"<div class='rota-separator'>📍 VIAGEM {i+1} de {total}</div>", unsafe_allow_html=True)
                     
-                    # 1. MOTORISTA (Cartão Limpo)
+                    # 1. MOTORISTA
                     st.markdown(f"""
                     <div class="driver-card">
                         <div class="driver-icon">👤</div>
@@ -175,7 +182,7 @@ if menu == "🚛 Minha Escala":
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # 2. GRELHA VEÍCULO (2x2 - MUITO MELHOR NO TELEMÓVEL)
+                    # 2. GRELHA VEÍCULO
                     st.markdown(f"""
                     <div class="vehicle-grid">
                         <div class="vehicle-item"><div class="vehicle-label">MATRÍCULA</div><div class="vehicle-val">{row.get('Matrícula', '-')}</div></div>
@@ -202,7 +209,7 @@ if menu == "🚛 Minha Escala":
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # 4. BARRA FINA DE STATUS
+                    # 4. BARRA FINA
                     v_sup = '0'
                     for c in df_rotas.columns: 
                         if "total suportes" in c.lower(): v_sup = str(row.get(c, '0')); break
