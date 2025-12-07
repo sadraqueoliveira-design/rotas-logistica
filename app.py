@@ -1,26 +1,51 @@
 import streamlit as st
 import pandas as pd
 
-# Configuração simples padrão
-st.set_page_config(page_title="Rotas Logística", page_icon="🚚")
+# Configuração da página
+st.set_page_config(page_title="Folha de Serviço", page_icon="🚛", layout="centered")
 
-# --- SEM CÓDIGOS CSS / SEM ESTILOS VISUAIS ---
-# Removemos qualquer tentativa de estilizar para garantir que o clique funcione.
+# --- CSS PARA ESTILO ---
+st.markdown("""
+<style>
+    .stMetric {
+        background-color: #f8f9fa;
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #e0e0e0;
+    }
+    /* Estilo para as etiquetas menores */
+    .small-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 0px;
+    }
+    .small-value {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #333;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# --- 1. FUNÇÃO DE LEITURA (A MAIS ROBUSTA) ---
+st.title("📋 Folha de Serviço Digital")
+
+# --- FUNÇÃO DE LEITURA (MANTIDA) ---
 def carregar_dados(uploaded_file):
     try:
-        # Tenta ler como Excel
-        if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
+        nome_arquivo = uploaded_file.name.lower()
+        df_raw = None
+        
+        if nome_arquivo.endswith(('.xlsx', '.xls')):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
-            # Tenta ler como CSV
             try:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
+        
+        if df_raw is None:
+            return None, "Erro na leitura."
 
-        # Procura a linha de cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -28,112 +53,119 @@ def carregar_dados(uploaded_file):
                 header_idx = index
                 break
         
-        if header_idx == -1: return None
-        
-        # Define cabeçalho e limpa
+        if header_idx == -1:
+            return None, "Não encontrei a linha de cabeçalho."
+
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
-        df = df.loc[:, df.columns.notna()]
+        df = df.loc[:, df.columns.notna()] 
         
         if 'VPN' in df.columns:
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            return df
-        return None
-    except:
-        return None
+            return df, None
+        else:
+            return None, "Coluna VPN não encontrada."
 
-# --- 2. CARREGAR DADOS ---
+    except Exception as e:
+        return None, f"Erro: {str(e)}"
+
+# --- BARRA LATERAL ---
+st.sidebar.header("Gestão")
+arquivo = st.sidebar.file_uploader("Carregar Escala", type=['xlsx', 'xls', 'csv'])
+
 df = None
-# Tenta ler arquivo local 'teste tfs.xlsx' se existir
-try:
-    with open("teste tfs.xlsx", "rb") as f:
-        from io import BytesIO
-        mem = BytesIO(f.read())
-        mem.name = "teste tfs.xlsx"
-        df = carregar_dados(mem)
-except:
-    pass
+if arquivo:
+    df, erro = carregar_dados(arquivo)
+    if erro:
+        st.error(erro)
+else:
+    try:
+        with open("teste tfs.xlsx", "rb") as f:
+            from io import BytesIO
+            arquivo_memoria = BytesIO(f.read())
+            arquivo_memoria.name = "teste tfs.xlsx"
+            df, erro = carregar_dados(arquivo_memoria)
+    except:
+        pass
 
-# --- 3. MENU ADMIN (BARRA LATERAL) ---
-# Usamos o menu padrão, sem esconder nada
-with st.sidebar:
-    st.header("Área do Gestor")
-    senha = st.text_input("Senha Admin", type="password")
-    
-    if senha == "admin123":
-        st.success("Acesso Permitido")
-        upload = st.file_uploader("Carregar Nova Escala", type=['xlsx', 'csv'])
-        if upload:
-            novo_df = carregar_dados(upload)
-            if novo_df is not None:
-                df = novo_df
-                st.success("Arquivo carregado com sucesso!")
-            else:
-                st.error("Erro ao ler o arquivo.")
-
-# --- 4. TELA DO MOTORISTA ---
-st.title("🚚 Consulta de Rotas")
+# --- TELA PRINCIPAL ---
 
 if df is not None:
-    st.write("Digite o número da sua VPN abaixo:")
+    st.markdown("---")
+    st.subheader("🔒 Acesso do Motorista")
+    vpn_input = st.text_input("Insira o número da VPN:", max_chars=10, placeholder="Ex: 76628")
     
-    # --- CAMPO DE TEXTO PADRÃO ---
-    # Sem truques, sem formatação especial. É o componente nativo.
-    vpn_input = st.text_input("Número da VPN", placeholder="Ex: 76628")
-    
-    if st.button("Pesquisar Rota"):
+    if st.button("Consultar Escala", type="primary"):
         vpn_input = vpn_input.strip()
         
         if vpn_input:
-            # Filtra os dados
-            resultado = df[df['VPN'] == vpn_input]
+            res = df[df['VPN'] == vpn_input]
             
-            if not resultado.empty:
-                row = resultado.iloc[0]
+            if not res.empty:
+                row = res.iloc[0]
                 
-                st.success(f"Olá, {row.get('Motorista', 'Motorista')}")
+                # --- CABEÇALHO ---
+                st.success(f"Motorista: **{row.get('Motorista', 'N/A')}**")
                 
-                # Exibe dados principais
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Rota", str(row.get('ROTA', '-')))
-                col2.metric("Loja", str(row.get('Nº LOJA', '-')))
-                col3.metric("Matrícula", str(row.get('Matrícula', '-')))
-                
-                st.markdown("---")
-                
-                # Horários
-                c_chegada, c_descarga = st.columns(2)
-                c_chegada.info(f"Chegada Azambuja:\n\n**{row.get('Hora chegada Azambuja', '--')}**")
-                c_descarga.warning(f"Descarga Loja:\n\n**{row.get('Hora descarga loja', '--')}**")
-                
-                if row.get('Retorno'):
-                    st.error(f"Retorno: {row.get('Retorno')}")
+                # --- ID ---
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Rota", str(row.get('ROTA', '-')))
+                c2.metric("Matrícula", str(row.get('Matrícula', '-')))
+                c3.metric("Loja Nº", str(row.get('Nº LOJA', '-')))
 
-                # Tabela de Carga
-                st.subheader("📦 Detalhes da Carga")
+                # --- OPERAÇÃO (AJUSTADO) ---
+                st.markdown("### 🕒 Operação")
                 
-                # Filtra colunas de carga para mostrar
-                cols_carga = ["Azambuja Ambiente", "Azambuja Congelados", "Peixe", "Talho", "Total Suportes"]
-                lista_carga = {"Tipo": [], "Quantidade": []}
+                # Colunas: 30% | 30% | 15% | 15%
+                k1, k2, k3, k4 = st.columns([3, 3, 1.5, 1.5])
                 
-                for item in cols_carga:
-                    valor = str(row.get(item, '0'))
-                    # Só mostra se tiver valor diferente de 0
-                    if valor != '0' and valor.lower() != 'nan':
-                        nome_limpo = item.replace("Azambuja ", "").replace("Total ", "")
-                        lista_carga["Tipo"].append(nome_limpo)
-                        lista_carga["Quantidade"].append(valor)
+                with k1:
+                    st.info(f"**Chegada Azambuja**\n\n### {row.get('Hora chegada Azambuja', '--')}")
+                with k2:
+                    st.warning(f"**Descarga Loja**\n\n### {row.get('Hora descarga loja', '--')}")
                 
-                if lista_carga["Tipo"]:
-                    st.table(pd.DataFrame(lista_carga))
+                # Retorno e Tipo menores e sem caixa colorida
+                with k3:
+                    st.markdown('<p class="small-label">Retorno</p>', unsafe_allow_html=True)
+                    st.markdown(f'<p class="small-value">{row.get("Retorno", "--")}</p>', unsafe_allow_html=True)
+                with k4:
+                    st.markdown('<p class="small-label">Tipo</p>', unsafe_allow_html=True)
+                    st.markdown(f'<p class="small-value">{row.get("TIPO", "-")}</p>', unsafe_allow_html=True)
+
+                st.caption(f"📍 Local Descarga: {row.get('Local descarga', 'Não especificado')}")
+
+                # --- CARGA ---
+                st.markdown("---")
+                st.markdown("### 📦 Manifesto")
+                
+                dados_carga = {
+                    "Categoria": ["🌡️ Ambiente", "❄️ Congelados", "🍖 Salsesen", "🍦 Frota Refrig.", "🐟 Peixe", "🥩 Talho", "📦 Suportes"],
+                    "Qtd": [
+                        row.get('Azambuja Ambiente', '0'),
+                        row.get('Azambuja Congelados', '0'),
+                        row.get('Salsesen Azambuja', '0'),
+                        row.get('Frota Refrigerado', '0'),
+                        row.get('Peixe', '0'),
+                        row.get('Talho', '0'),
+                        row.get('Total Suportes', '0')
+                    ]
+                }
+                
+                df_carga = pd.DataFrame(dados_carga)
+                # Filtra linhas onde a quantidade é 0 ou vazia para limpar a tela
+                df_carga = df_carga[ (df_carga['Qtd'].astype(str) != '0') & (df_carga['Qtd'].astype(str) != 'nan') ]
+                
+                if not df_carga.empty:
+                    st.table(df_carga.set_index('Categoria'))
                 else:
-                    st.write("Nenhuma carga específica registrada.")
-                    
-                st.caption(f"Local de Descarga: {row.get('Local descarga', '-')}")
-                
+                    st.info("Sem cargas registradas para esta rota.")
+
+                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                     st.info(f"📱 **Obs:** {row['WhatsApp']}")
+
             else:
-                st.error("Número de VPN não encontrado.")
+                st.error("⛔ VPN não encontrada.")
         else:
-            st.warning("Por favor, digite um número.")
+            st.warning("Por favor, digite a VPN.")
 else:
-    st.info("Aguardando carregamento da planilha de rotas.")
+    st.info("👈 Carregue a escala na barra lateral.")
