@@ -18,78 +18,78 @@ try:
 except:
     agora = datetime.now()
 
-data_hoje = agora.strftime("%d/%m/%Y")
-dias = {0:"Segunda", 1:"Terça", 2:"Quarta", 3:"Quinta", 4:"Sexta", 5:"Sábado", 6:"Domingo"}
+data_hoje = agora.strftime("%d/%m") # Data curta (ex: 07/12) para economizar espaço
+dias = {0:"Seg", 1:"Ter", 2:"Qua", 3:"Qui", 4:"Sex", 5:"Sáb", 6:"Dom"} # Dias curtos
 dia_sem = dias[agora.weekday()]
 
-# --- 3. ESTILO (CSS OTIMIZADO) ---
+# --- 3. ESTILO (CSS ULTRA COMPACTO) ---
 st.markdown("""
 <style>
     #MainMenu, footer, header {visibility: hidden;}
     .block-container {padding-top: 0.5rem; padding-bottom: 0rem;}
     
-    /* Cabeçalho */
+    /* Cabeçalho Fino */
     .header-box {
         background-color: #004aad;
-        padding: 10px;
-        border-radius: 8px;
+        padding: 8px; /* Muito fino */
+        border-radius: 6px;
         text-align: center;
         color: white;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
     }
-    .header-title { font-size: 18px; font-weight: bold; margin: 0; }
-    .header-date { font-size: 12px; opacity: 0.9; }
+    .header-title { font-size: 16px; font-weight: bold; margin: 0; line-height: 1; }
+    .header-date { font-size: 11px; opacity: 0.9; margin: 0; }
     
-    /* Horários */
+    /* Blocos de Horário Compactos */
     .time-block {
         background-color: #f8f9fa;
-        padding: 8px;
-        border-radius: 6px;
-        border-left: 4px solid #004aad;
+        padding: 5px; /* Pouco enchimento */
+        border-radius: 5px;
+        border-left: 3px solid #004aad;
         margin-bottom: 5px;
     }
-    .time-label { font-size: 0.65rem; color: #666; font-weight: bold; text-transform: uppercase; }
-    .time-value { font-size: 1.2rem; font-weight: bold; color: #333; margin: 0px 0; }
-    .location-highlight { font-size: 0.9rem; color: #d32f2f; font-weight: 900; text-transform: uppercase; }
+    .time-label { font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
+    .time-value { font-size: 1.1rem; font-weight: bold; color: #333; margin: 0; line-height: 1.1; }
+    .location-highlight { font-size: 0.8rem; color: #d32f2f; font-weight: 900; text-transform: uppercase; margin: 0;}
     
-    /* BARRA HORIZONTAL COMPACTA */
+    /* BARRA HORIZONTAL ULTRA FINA (AQUI ESTÁ O QUE PEDIU) */
     .info-row {
         display: flex;
         justify-content: space-between;
-        gap: 5px;
+        gap: 4px;
         margin-top: 5px;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
     .info-item {
         flex: 1;
         text-align: center;
-        padding: 5px;
-        border-radius: 5px;
+        padding: 3px 2px; /* Quase sem enchimento */
+        border-radius: 4px;
         color: white;
     }
-    .info-label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 2px; }
-    .info-val { font-size: 1.0rem; font-weight: bold; line-height: 1; }
+    .info-label { font-size: 0.5rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 0px; line-height: 1;}
+    .info-val { font-size: 0.9rem; font-weight: bold; line-height: 1.1; }
     
     .bg-purple { background-color: #7b1fa2; }
     .bg-orange { background-color: #f57c00; }
     .bg-green { background-color: #388e3c; }
 
-    /* Ajustes Gerais */
-    div[data-testid="stTextInput"] input { padding: 8px; font-size: 16px; }
-    div[data-testid="metric-container"] { padding: 5px; }
-    div[data-testid="metric-container"] label { font-size: 0.7rem; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 1.0rem; }
+    /* Compactar Métricas do Streamlit */
+    div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
+    div[data-testid="metric-container"] label { font-size: 0.6rem; margin-bottom: 0px; }
+    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 0.9rem; }
+    div[data-testid="stTextInput"] { margin-bottom: 0px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 4. CABEÇALHO ---
 st.markdown(f"""
 <div class="header-box">
-    <div style="font-size: 24px;">🚛</div>
+    <div style="font-size: 20px;">🚛</div>
     <div>
         <div class="header-title">Minha Escala</div>
         <div class="header-date">{dia_sem}, {data_hoje}</div>
@@ -151,7 +151,7 @@ with st.sidebar:
 # --- 6. TELA MOTORISTA ---
 if df is not None:
     with st.form(key='busca'):
-        vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Digite a VPN aqui...")
+        vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Digite a VPN...")
         btn = st.form_submit_button("🔍 VER ROTA", type="primary")
 
     if btn:
@@ -161,12 +161,12 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Motorista
-                st.markdown(f"<div style='background:#eee; padding:5px; border-radius:5px; text-align:center; font-weight:bold; margin-bottom:5px;'>👤 {row.get('Motorista', '-')}</div>", unsafe_allow_html=True)
+                # Motorista (Linha fina)
+                st.markdown(f"<div style='background:#eee; padding:2px; border-radius:3px; text-align:center; font-weight:bold; font-size:0.9rem; margin-bottom:5px;'>👤 {row.get('Motorista', '-')}</div>", unsafe_allow_html=True)
                 
                 # Veículo
                 c1, c2, c3, c4 = st.columns(4)
-                c1.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
+                c1.metric("MATR", str(row.get('Matrícula', '-')))
                 c2.metric("MÓVEL", str(row.get('Móvel', '-')))
                 c3.metric("ROTA", str(row.get('ROTA', '-')))
                 c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
@@ -190,7 +190,7 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # BARRA COMPACTA
+                # --- BARRA SUPER FINA (SUPORTES | RETORNO | TIPO) ---
                 val_suportes = '0'
                 for col in df.columns:
                     if "total suportes" in col.lower():
@@ -205,16 +205,16 @@ if df is not None:
                     </div>
                     <div class="info-item bg-orange">
                         <span class="info-label">RETORNO</span>
-                        <span class="info-val">🔙 {row.get('Retorno', '-')}</span>
+                        <span class="info-val">{row.get('Retorno', '-')}</span>
                     </div>
                     <div class="info-item bg-green">
                         <span class="info-label">TIPO</span>
-                        <span class="info-val">📋 {row.get('TIPO', '-')}</span>
+                        <span class="info-val">{row.get('TIPO', '-')}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Carga
+                # Carga (Expander ocupa pouco espaço quando fechado)
                 with st.expander("🔎 Ver Carga", expanded=False):
                     cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
                             "Frota Refrigerado", "Peixe", "Talho"]
