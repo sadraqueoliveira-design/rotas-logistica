@@ -1,59 +1,50 @@
 import streamlit as st
 import pandas as pd
 
-# Configuração da página
+# Configuração básica
 st.set_page_config(page_title="Minha Rota", page_icon="🚚", layout="centered")
 
-# --- CSS CORRIGIDO (PARA DESBLOQUEAR A DIGITAÇÃO) ---
+# --- CSS LIMPO (Apenas para esconder o menu e aumentar o botão) ---
+# Removi qualquer código que mexa na caixa de texto (Input) para evitar bloqueios
 st.markdown("""
 <style>
-    /* Remove o menu e rodapé completamente para não bloquear cliques */
-    #MainMenu {display: none;}
-    footer {display: none;}
-    header {display: none;}
+    /* Esconde menu e rodapé */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     
-    /* Estilo do Botão */
+    /* Aumenta apenas o Botão para ficar fácil de clicar */
     div.stButton > button {
         width: 100%;
         height: 3em;
-        font-size: 20px;
+        font-size: 18px;
         background-color: #007bff;
         color: white;
-        border-radius: 10px;
+        border-radius: 8px;
         border: none;
     }
     div.stButton > button:hover {
         background-color: #0056b3;
     }
     
-    /* CORREÇÃO DO CAMPO DE TEXTO */
-    /* Garante que o campo esteja clicável e visível */
-    div[data-testid="stTextInput"] {
-        z-index: 1000; /* Traz para frente */
-    }
-    div[data-testid="stTextInput"] input {
-        font-size: 20px;
-        text-align: center;
-        min-height: 50px;
-    }
-    
-    /* Cartões */
+    /* Estilo dos Cartões de Informação */
     .metric-card {
-        background-color: #f0f2f6;
+        background-color: #f8f9fa;
         padding: 15px;
         border-radius: 10px;
         text-align: center;
         margin-bottom: 10px;
-        border: 1px solid #e6e6e6;
+        border: 1px solid #ddd;
     }
-    .big-text { font-size: 1.5rem; font-weight: bold; color: #1f2937; }
-    .small-text { font-size: 0.9rem; color: #6b7280; }
+    .big-text { font-size: 1.4rem; font-weight: bold; color: #333; }
+    .small-text { font-size: 0.9rem; color: #666; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- FUNÇÃO DE LEITURA ---
 def carregar_dados(uploaded_file):
     try:
+        # Tenta ler Excel ou CSV
         if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
@@ -62,6 +53,7 @@ def carregar_dados(uploaded_file):
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
 
+        # Busca cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -82,7 +74,7 @@ def carregar_dados(uploaded_file):
     except:
         return None
 
-# --- LÓGICA DE DADOS ---
+# --- CARREGAR ARQUIVO (Memória ou Upload) ---
 df = None
 try:
     with open("teste tfs.xlsx", "rb") as f:
@@ -93,89 +85,81 @@ try:
 except:
     pass
 
-# --- ÁREA DE ADMIN (MENU LATERAL) ---
+# --- MENU ADMIN (LATERAL) ---
 with st.sidebar:
-    st.header("🔧 Gestor")
+    st.header("🔧 Admin")
     senha = st.text_input("Senha", type="password")
     if senha == "admin123":
-        upload = st.file_uploader("Carregar Arquivo", type=['xlsx','csv'])
+        st.success("Logado")
+        upload = st.file_uploader("Carregar Escala", type=['xlsx','csv'])
         if upload:
             df_up = carregar_dados(upload)
             if df_up is not None:
                 df = df_up
-                st.success("Atualizado!")
+                st.success("✅ Atualizado!")
 
-# --- TELA DO APP ---
+# --- TELA PRINCIPAL ---
 st.markdown("<h2 style='text-align: center;'>🚚 Minha Escala</h2>", unsafe_allow_html=True)
 
 if df is not None:
-    # Campo de VPN
-    st.write("") 
-    vpn_input = st.text_input("Sua VPN:", placeholder="Digite aqui...", max_chars=10, label_visibility="collapsed")
+    st.write("Digite sua VPN abaixo:")
     
-    if st.button("🔍 VER MINHA ROTA"):
+    # Campo simples, sem estilo customizado, para garantir funcionamento
+    vpn_input = st.text_input("VPN", label_visibility="collapsed", placeholder="Ex: 76628")
+    
+    # Botão de busca
+    if st.button("🔍 BUSCAR ROTA"):
         vpn_input = vpn_input.strip()
         if vpn_input:
             res = df[df['VPN'] == vpn_input]
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Exibição
-                st.markdown(f"<div style='text-align:center; margin-bottom:15px; font-size:1.2rem;'>Olá, <b>{row.get('Motorista', 'Motorista')}</b></div>", unsafe_allow_html=True)
+                # Exibição dos dados
+                st.markdown(f"<div style='text-align:center; margin-bottom:10px; font-size:1.2rem;'>Olá, <b>{row.get('Motorista', 'Motorista')}</b></div>", unsafe_allow_html=True)
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="small-text">ROTA</div>
-                        <div class="big-text">{row.get('ROTA', '-')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col2:
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <div class="small-text">LOJA</div>
-                        <div class="big-text">{row.get('Nº LOJA', '-')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown(f"""<div class="metric-card"><div class="small-text">ROTA</div><div class="big-text">{row.get('ROTA', '-')}</div></div>""", unsafe_allow_html=True)
+                with c2:
+                    st.markdown(f"""<div class="metric-card"><div class="small-text">LOJA</div><div class="big-text">{row.get('Nº LOJA', '-')}</div></div>""", unsafe_allow_html=True)
 
                 st.markdown(f"""
-                <div class="metric-card" style="background-color: #e3f2fd; border: 1px solid #90caf9;">
+                <div class="metric-card" style="background-color: #e3f2fd; border-color: #90caf9;">
                     <div class="small-text">CHEGADA AZAMBUJA</div>
                     <div class="big-text" style="color: #0d47a1;">{row.get('Hora chegada Azambuja', '--')}</div>
                 </div>
-                <div class="metric-card" style="background-color: #fff3e0; border: 1px solid #ffcc80;">
+                <div class="metric-card" style="background-color: #fff3e0; border-color: #ffcc80;">
                     <div class="small-text">DESCARGA LOJA</div>
                     <div class="big-text" style="color: #e65100;">{row.get('Hora descarga loja', '--')}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 if row.get('Retorno'):
-                     st.error(f"⚠️ **RETORNO:** {row.get('Retorno')}")
+                     st.error(f"⚠️ RETORNO: {row.get('Retorno')}")
 
-                with st.expander("📦 VER CARGA", expanded=False):
-                    dados = {
-                        "Item": ["Ambiente", "Congelados", "Peixe", "Talho", "Suportes"],
-                        "Qtd": [
-                            row.get('Azambuja Ambiente',0), 
-                            row.get('Azambuja Congelados',0),
-                            row.get('Peixe',0),
-                            row.get('Talho',0),
-                            row.get('Total Suportes',0)
-                        ]
-                    }
-                    d_show = pd.DataFrame(dados)
-                    d_show = d_show[d_show['Qtd'].astype(str) != '0'] 
-                    if not d_show.empty:
-                        st.table(d_show.set_index('Item'))
+                with st.expander("📦 VER CARGA"):
+                    cols_check = ["Azambuja Ambiente", "Azambuja Congelados", "Peixe", "Talho", "Total Suportes"]
+                    dados = {"Item": [], "Qtd": []}
+                    
+                    for col in cols_check:
+                        val = str(row.get(col, '0'))
+                        if val != '0' and val.lower() != 'nan':
+                            # Limpa o nome da coluna para ficar bonito
+                            nome_limpo = col.replace("Azambuja ", "").replace("Total ", "")
+                            dados["Item"].append(nome_limpo)
+                            dados["Qtd"].append(val)
+                            
+                    if dados["Item"]:
+                        st.table(pd.DataFrame(dados).set_index("Item"))
                     else:
-                        st.info("Sem dados de carga.")
+                        st.info("Sem carga registrada.")
                     
                     st.caption(f"Local: {row.get('Local descarga','-')}")
 
             else:
                 st.error("❌ VPN não encontrada.")
         else:
-            st.warning("⚠️ Digite a VPN.")
+            st.warning("Digite o número.")
 else:
-    st.info("Aguardando escala...")
+    st.info("⚠️ Aguardando carregamento da escala.")
