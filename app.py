@@ -85,4 +85,163 @@ st.markdown("""
     div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
     div[data-testid="metric-container"] label { font-size: 0.6rem; margin-bottom: 0px; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 0.9rem; }
-    div[data-testid="stTextInput"] { margin-bottom: 0
+    div[data-testid="stTextInput"] { margin-bottom: 0px; }
+</style>
+""", unsafe_allow_html=True)
+
+# --- 4. CABEÇALHO ---
+st.markdown(f"""
+<div class="header-box">
+    <div style="font-size: 20px;">🚛</div>
+    <div>
+        <div class="header-title">Minha Escala</div>
+        <div class="header-date">{dia_sem}, {data_hoje}</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- 5. FUNÇÃO DE LEITURA ---
+def carregar_dados(uploaded_file):
+    try:
+        if uploaded_file.name.lower().endswith('xlsx'):
+            df_raw = pd.read_excel(uploaded_file, header=None)
+        else:
+            try: df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
+            except: df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
+
+        header_idx = -1
+        for index, row in df_raw.iterrows():
+            txt = row.astype(str).str.cat(sep=' ').lower()
+            if "motorista" in txt and "vpn" in txt:
+                header_idx = index
+                break
+        
+        if header_idx == -1: return None
+        
+        df_raw.columns = df_raw.iloc[header_idx] 
+        df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
+        df.columns = df.columns.astype(str).str.strip()
+        df = df.loc[:, df.columns.notna()]
+        if 'VPN' in df.columns:
+            df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            return df
+        return None
+    except: return None
+
+# Carrega arquivo
+df = None
+nome = "rotas.csv.xlsx"
+if os.path.exists(nome):
+    try:
+        with open(nome, "rb") as f:
+            from io import BytesIO
+            mem = BytesIO(f.read())
+            mem.name = nome
+            df = carregar_dados(mem)
+    except: pass
+
+# Admin
+with st.sidebar:
+    st.header("Gestão")
+    if st.text_input("Senha", type="password") == "admin123":
+        up = st.file_uploader("Upload", type=['xlsx', 'csv'])
+        if up:
+            novo = carregar_dados(up)
+            if novo is not None:
+                df = novo
+                st.success("Atualizado!")
+
+# --- 6. TELA MOTORISTA ---
+if df is not None:
+    with st.form(key='busca'):
+        vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Digite a VPN...")
+        btn = st.form_submit_button("🔍 VER ROTA", type="primary")
+
+    if btn:
+        vpn = vpn.strip()
+        if vpn:
+            res = df[df['VPN'] == vpn]
+            if not res.empty:
+                row = res.iloc[0]
+                
+                # Motorista
+                st.markdown(f"<div style='background:#eee; padding:2px; border-radius:3px; text-align:center; font-weight:bold; font-size:0.9rem; margin-bottom:5px;'>👤 {row.get('Motorista', '-')}</div>", unsafe_allow_html=True)
+                
+                # Veículo
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("MATR", str(row.get('Matrícula', '-')))
+                c2.metric("MÓVEL", str(row.get('Móvel', '-')))
+                c3.metric("ROTA", str(row.get('ROTA', '-')))
+                c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                
+                # Horários (AQUI ESTÁ A MUDANÇA)
+                local_descarga = str(row.get('Local descarga', 'Loja')).upper()
+                
+                cc, cd = st.columns(2)
+                
+                # Bloco CHEGADA (Com AZAMBUJA grande e azul)
+                with cc:
+                    st.markdown(f"""
+                    <div class="time-block" style="border-left-color: #0d47a1;">
+                        <div class="time-label">CHEGADA</div>
+                        <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                        <div class="location-highlight text-blue">AZAMBUJA</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Bloco DESCARGA (Com LOJA grande e vermelha)
+                with cd:
+                    st.markdown(f"""
+                    <div class="time-block" style="border-left-color: #d32f2f;">
+                        <div class="time-label">DESCARGA</div>
+                        <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
+                        <div class="location-highlight text-red">{local_descarga}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # BARRA SUPER FINA
+                val_suportes = '0'
+                for col in df.columns:
+                    if "total suportes" in col.lower():
+                        val_suportes = str(row.get(col, '0'))
+                        break
+                
+                st.markdown(f"""
+                <div class="info-row">
+                    <div class="info-item bg-purple">
+                        <span class="info-label">SUPORTES</span>
+                        <span class="info-val">📦 {val_suportes}</span>
+                    </div>
+                    <div class="info-item bg-orange">
+                        <span class="info-label">RETORNO</span>
+                        <span class="info-val">{row.get('Retorno', '-')}</span>
+                    </div>
+                    <div class="info-item bg-green">
+                        <span class="info-label">TIPO</span>
+                        <span class="info-val">{row.get('TIPO', '-')}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Carga
+                with st.expander("🔎 Ver Carga", expanded=False):
+                    cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
+                            "Frota Refrigerado", "Peixe", "Talho"]
+                    dd = {"Cat": [], "Qtd": []}
+                    for i in cols:
+                        col_match = next((c for c in df.columns if i.lower() in c.lower()), None)
+                        if col_match:
+                            v = str(row.get(col_match, '0'))
+                            if v != '0' and v.lower() != 'nan':
+                                dd["Cat"].append(i.replace("Azambuja ", "").replace("Total ", ""))
+                                dd["Qtd"].append(v)
+                                
+                    if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
+                    else: st.caption("Sem carga especial.")
+                
+                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                     st.info(f"📱 {row['WhatsApp']}")
+            else: st.error("❌ VPN não encontrada.")
+        else: st.warning("Digite a VPN.")
+else:
+    st.warning("⚠️ Aguardando arquivo.")
