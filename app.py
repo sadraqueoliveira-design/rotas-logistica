@@ -13,6 +13,7 @@ st.markdown("""
         border-radius: 5px;
         border: 1px solid #e0e0e0;
     }
+    /* Deixa as caixas de alerta (info/warning/error) com altura padrão */
     div[data-testid="stAlert"] {
         height: 100%;
     }
@@ -21,70 +22,57 @@ st.markdown("""
 
 st.title("📋 Folha de Serviço Digital")
 
-# --- FUNÇÃO DE LEITURA ---
+# --- FUNÇÃO DE LEITURA (MANTIDA) ---
 def carregar_dados(uploaded_file):
-    # O bloco try deve englobar toda a lógica de leitura
     try:
         nome_arquivo = uploaded_file.name.lower()
         df_raw = None
         
-        # 1. Tenta ler o arquivo dependendo da extensão
         if nome_arquivo.endswith(('.xlsx', '.xls')):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
-            # Tenta ler CSV com diferentes configurações
             try:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
         
         if df_raw is None:
-            return None, "Erro na leitura do arquivo."
+            return None, "Erro na leitura."
 
-        # 2. Busca pela linha de cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
-            # Procura por "motorista" e "vpn" na mesma linha
             if "motorista" in linha_txt and "vpn" in linha_txt:
                 header_idx = index
                 break
         
         if header_idx == -1:
-            return None, "Não encontrei a linha de cabeçalho contendo 'Motorista' e 'VPN'."
+            return None, "Não encontrei a linha de cabeçalho (Motorista/VPN)."
 
-        # 3. Aplica o cabeçalho e limpa os dados
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
-        
-        # Remove colunas vazias
         df = df.loc[:, df.columns.notna()] 
         
-        # Limpa a coluna VPN
         if 'VPN' in df.columns:
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             return df, None
         else:
-            return None, "Coluna VPN não encontrada após processamento."
+            return None, "Coluna VPN não encontrada."
 
     except Exception as e:
-        # Se der qualquer erro acima, cai aqui
-        return None, f"Erro técnico ao processar: {str(e)}"
+        return None, f"Erro: {str(e)}"
 
 # --- BARRA LATERAL ---
 st.sidebar.header("Gestão")
 arquivo = st.sidebar.file_uploader("Carregar Escala Atualizada", type=['xlsx', 'xls', 'csv'])
 
 df = None
-
-# Se o usuário fez upload
 if arquivo:
     df, erro = carregar_dados(arquivo)
     if erro:
         st.error(erro)
-
-# Se não fez upload, tenta ler arquivo local (backup)
-if df is None:
+else:
+    # Tenta ler local se não houver upload (Fallback)
     try:
         with open("teste tfs.xlsx", "rb") as f:
             from io import BytesIO
@@ -99,32 +87,31 @@ if df is None:
 if df is not None:
     st.markdown("---")
     st.subheader("🔒 Acesso do Motorista")
-    
-    # Campo de busca
     vpn_input = st.text_input("Insira o número da VPN:", max_chars=10, placeholder="Ex: 76628")
     
     if st.button("Consultar Escala", type="primary"):
         vpn_input = vpn_input.strip()
         
         if vpn_input:
-            # Filtra os dados
             res = df[df['VPN'] == vpn_input]
             
             if not res.empty:
                 row = res.iloc[0]
                 
-                # --- EXIBIÇÃO DOS DADOS ---
+                # --- CABEÇALHO ---
                 st.success(f"Motorista: **{row.get('Motorista', 'N/A')}**")
                 
-                # Bloco 1: Identificação
+                # --- LINHA 1: IDENTIFICAÇÃO ---
                 st.markdown("### 🚛 Identificação")
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Rota", str(row.get('ROTA', '-')))
                 c2.metric("Matrícula", str(row.get('Matrícula', '-')))
                 c3.metric("Loja Nº", str(row.get('Nº LOJA', '-')))
 
-                # Bloco 2: Operação (Horários, Retorno, Tipo)
+                # --- LINHA 2: HORÁRIOS, RETORNO E TIPO (AGRUPADOS) ---
                 st.markdown("### 🕒 Operação")
+                
+                # Criamos 4 colunas para ficarem lado a lado
                 k1, k2, k3, k4 = st.columns(4)
                 
                 with k1:
@@ -132,13 +119,15 @@ if df is not None:
                 with k2:
                     st.warning(f"**Descarga**\n\n{row.get('Hora descarga loja', '--')}")
                 with k3:
+                    # Retorno em destaque vermelho
                     st.error(f"**Retorno**\n\n{row.get('Retorno', '--')}")
                 with k4:
+                    # Tipo ao lado do Retorno
                     st.metric("Tipo", str(row.get('TIPO', '-')))
 
                 st.caption(f"📍 Local: {row.get('Local descarga', 'Não especificado')}")
 
-                # Bloco 3: Tabela de Carga
+                # --- LINHA 3: CARGA DETALHADA ---
                 st.markdown("---")
                 st.markdown("### 📦 Manifesto de Carga")
                 
@@ -164,6 +153,7 @@ if df is not None:
                 }
                 
                 df_carga = pd.DataFrame(dados_carga)
+                # Tabela ocupando a largura total
                 st.table(df_carga.set_index('Categoria'))
 
                 if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
