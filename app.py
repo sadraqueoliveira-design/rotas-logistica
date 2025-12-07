@@ -55,10 +55,10 @@ st.markdown("""
     .time-label { font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
     .time-value { font-size: 1.1rem; font-weight: bold; color: #333; margin: 0; line-height: 1.1; }
     
-    /* Locais em Destaque (AZAMBUJA e LOJA) */
+    /* Locais em Destaque */
     .location-highlight { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; margin: 0;}
-    .text-blue { color: #0d47a1; } /* Cor para Azambuja */
-    .text-red { color: #d32f2f; }  /* Cor para Loja */
+    .text-blue { color: #0d47a1; } 
+    .text-red { color: #d32f2f; }
     
     /* BARRA HORIZONTAL ULTRA FINA */
     .info-row {
@@ -164,8 +164,13 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Motorista
-                st.markdown(f"<div style='background:#eee; padding:2px; border-radius:3px; text-align:center; font-weight:bold; font-size:0.9rem; margin-bottom:5px;'>👤 {row.get('Motorista', '-')}</div>", unsafe_allow_html=True)
+                # --- MUDANÇA AQUI: NOME DO MOTORISTA EM DESTAQUE ---
+                # Fundo Azul Escuro, Texto Branco, Letra Maior (1.1rem)
+                st.markdown(f"""
+                <div style='background-color: #004aad; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+                    👤 {row.get('Motorista', '-')}
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Veículo
                 c1, c2, c3, c4 = st.columns(4)
@@ -174,74 +179,15 @@ if df is not None:
                 c3.metric("ROTA", str(row.get('ROTA', '-')))
                 c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
                 
-                # Horários (AQUI ESTÁ A MUDANÇA)
+                # Horários
                 local_descarga = str(row.get('Local descarga', 'Loja')).upper()
                 
                 cc, cd = st.columns(2)
                 
-                # Bloco CHEGADA (Com AZAMBUJA grande e azul)
+                # Bloco CHEGADA
                 with cc:
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #0d47a1;">
                         <div class="time-label">CHEGADA</div>
                         <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
-                        <div class="location-highlight text-blue">AZAMBUJA</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Bloco DESCARGA (Com LOJA grande e vermelha)
-                with cd:
-                    st.markdown(f"""
-                    <div class="time-block" style="border-left-color: #d32f2f;">
-                        <div class="time-label">DESCARGA</div>
-                        <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
-                        <div class="location-highlight text-red">{local_descarga}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # BARRA SUPER FINA
-                val_suportes = '0'
-                for col in df.columns:
-                    if "total suportes" in col.lower():
-                        val_suportes = str(row.get(col, '0'))
-                        break
-                
-                st.markdown(f"""
-                <div class="info-row">
-                    <div class="info-item bg-purple">
-                        <span class="info-label">SUPORTES</span>
-                        <span class="info-val">📦 {val_suportes}</span>
-                    </div>
-                    <div class="info-item bg-orange">
-                        <span class="info-label">RETORNO</span>
-                        <span class="info-val">{row.get('Retorno', '-')}</span>
-                    </div>
-                    <div class="info-item bg-green">
-                        <span class="info-label">TIPO</span>
-                        <span class="info-val">{row.get('TIPO', '-')}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Carga
-                with st.expander("🔎 Ver Carga", expanded=False):
-                    cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
-                            "Frota Refrigerado", "Peixe", "Talho"]
-                    dd = {"Cat": [], "Qtd": []}
-                    for i in cols:
-                        col_match = next((c for c in df.columns if i.lower() in c.lower()), None)
-                        if col_match:
-                            v = str(row.get(col_match, '0'))
-                            if v != '0' and v.lower() != 'nan':
-                                dd["Cat"].append(i.replace("Azambuja ", "").replace("Total ", ""))
-                                dd["Qtd"].append(v)
-                                
-                    if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
-                    else: st.caption("Sem carga especial.")
-                
-                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
-                     st.info(f"📱 {row['WhatsApp']}")
-            else: st.error("❌ VPN não encontrada.")
-        else: st.warning("Digite a VPN.")
-else:
-    st.warning("⚠️ Aguardando arquivo.")
+                        <div class="location-highlight text-blue">AZAM
