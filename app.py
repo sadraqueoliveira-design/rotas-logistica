@@ -68,7 +68,6 @@ st.markdown("""
         margin-top: 5px;
         margin-bottom: 5px;
     }
-    
     .info-item {
         flex: 1;
         text-align: center;
@@ -76,35 +75,21 @@ st.markdown("""
         border-radius: 4px;
         color: white;
     }
-    
-    /* Estilo Especial para o Retorno (Fundo Branco + Borda) */
-    .info-item-retorno {
-        flex: 1;
-        text-align: center;
-        padding: 2px 2px;
-        border-radius: 4px;
-        background-color: white;
-        border: 1px solid #ddd;
-    }
-    
     .info-label { font-size: 0.5rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 0px; line-height: 1;}
-    .info-label-dark { font-size: 0.5rem; text-transform: uppercase; color: #666; display: block; margin-bottom: 0px; line-height: 1; font-weight: bold;}
-    
     .info-val { font-size: 0.9rem; font-weight: bold; line-height: 1.1; }
     
     .bg-purple { background-color: #7b1fa2; }
+    .bg-orange { background-color: #f57c00; }
     .bg-green { background-color: #388e3c; }
 
-    /* Separador */
+    /* Separador de Rotas */
     .rota-separator {
         text-align: center;
-        margin: 15px 0 5px 0;
-        font-size: 0.8rem;
+        margin: 20px 0;
         font-weight: bold;
-        color: #004aad;
-        background-color: #e3f2fd;
-        padding: 4px;
-        border-radius: 4px;
+        color: #555;
+        border-top: 2px dashed #ccc;
+        padding-top: 10px;
     }
 
     div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
@@ -185,20 +170,24 @@ if df is not None:
     if btn:
         vpn = vpn.strip()
         if vpn:
+            # AQUI ESTÁ A MUDANÇA: Buscamos TODAS as linhas, não apenas a primeira
             res = df[df['VPN'] == vpn]
             
             if not res.empty:
                 total_rotas = len(res)
                 
+                # Loop para mostrar cada rota encontrada
                 for i, (index, row) in enumerate(res.iterrows()):
+                    
                     numero_rota = i + 1
                     
+                    # Se houver mais de uma rota, mostra um separador
                     if total_rotas > 1:
-                         st.markdown(f"<div class='rota-separator'>📍 VIAGEM {numero_rota}</div>", unsafe_allow_html=True)
+                         st.markdown(f"<div class='rota-separator'>📍 VIAGEM {numero_rota} de {total_rotas}</div>", unsafe_allow_html=True)
                     
-                    # MOTORISTA
+                    # --- NOME DO MOTORISTA ---
                     st.markdown(f"""
-                    <div style='background-color: #004aad; color: white; padding: 6px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);'>
+                    <div style='background-color: #004aad; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
                         👤 {row.get('Motorista', '-')}
                     </div>
                     """, unsafe_allow_html=True)
@@ -215,6 +204,7 @@ if df is not None:
                     
                     cc, cd = st.columns(2)
                     
+                    # Bloco CHEGADA
                     with cc:
                         st.markdown(f"""
                         <div class="time-block" style="border-left-color: #0d47a1;">
@@ -224,6 +214,7 @@ if df is not None:
                         </div>
                         """, unsafe_allow_html=True)
                     
+                    # Bloco DESCARGA
                     with cd:
                         st.markdown(f"""
                         <div class="time-block" style="border-left-color: #d32f2f;">
@@ -233,20 +224,12 @@ if df is not None:
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # --- BARRA FINA (RETORNO VERDE) ---
+                    # BARRA SUPER FINA
                     val_suportes = '0'
                     for col in df.columns:
                         if "total suportes" in col.lower():
                             val_suportes = str(row.get(col, '0'))
                             break
-                    
-                    val_retorno = str(row.get('Retorno', '-'))
-                    
-                    # LÓGICA DE COR AJUSTADA:
-                    # Adicionei '○', 'o', 'O' à lista de ignorados para ficarem PRETO/CINZA.
-                    cor_texto_retorno = "#333333" 
-                    if val_retorno not in ['0', '-', 'nan', 'Vazio', 'None', '○', 'o', 'O']:
-                        cor_texto_retorno = "#008000" # VERDE
                     
                     st.markdown(f"""
                     <div class="info-row">
@@ -254,14 +237,10 @@ if df is not None:
                             <span class="info-label">SUPORTES</span>
                             <span class="info-val">📦 {val_suportes}</span>
                         </div>
-                        
-                        <div class="info-item-retorno">
-                            <span class="info-label-dark">RETORNO</span>
-                            <span class="info-val" style="color: {cor_texto_retorno}; font-size: 1.0rem;">
-                                {val_retorno}
-                            </span>
+                        <div class="info-item bg-orange">
+                            <span class="info-label">RETORNO</span>
+                            <span class="info-val">{row.get('Retorno', '-')}</span>
                         </div>
-                        
                         <div class="info-item bg-green">
                             <span class="info-label">TIPO</span>
                             <span class="info-val">{row.get('TIPO', '-')}</span>
@@ -269,8 +248,8 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Carga
-                    with st.expander(f"🔎 Carga Viagem {numero_rota}", expanded=False):
+                    # Carga (chave única para o expander não travar o loop)
+                    with st.expander(f"🔎 Carga - Viagem {numero_rota}", expanded=False):
                         cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
                                 "Frota Refrigerado", "Peixe", "Talho"]
                         dd = {"Cat": [], "Qtd": []}
