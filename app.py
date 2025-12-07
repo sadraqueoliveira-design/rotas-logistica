@@ -17,54 +17,78 @@ ADMINS = {
     "Escritório": "office99",
 }
 
-# --- 2. ESTILO CSS ---
+# --- 2. ESTILO CSS (ALTA VISIBILIDADE) ---
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
+    /* Forçar a visibilidade do botão do Menu e Cabeçalho */
+    #MainMenu {visibility: visible !important;}
+    header {visibility: visible !important;}
     footer {visibility: hidden;}
-    .block-container {padding-top: 1rem; padding-bottom: 3rem;}
     
-    /* Menu Lateral */
-    section[data-testid="stSidebar"] { background-color: #f0f2f6; }
+    .block-container {padding-top: 2rem; padding-bottom: 3rem;}
     
-    /* Cabeçalho */
+    /* Menu Lateral - Aumentar Texto */
+    .css-1d391kg, [data-testid="stSidebar"] {
+        font-size: 18px !important;
+    }
+    
+    /* --- CABEÇALHO NOVO (MAIOR E MAIS VISÍVEL) --- */
     .header-box {
-        background-color: #004aad;
-        padding: 8px;
-        border-radius: 6px;
+        background: linear-gradient(135deg, #004aad 0%, #003380 100%);
+        padding: 15px;
+        border-radius: 10px;
         text-align: center;
         color: white;
-        margin-bottom: 5px;
-        display: flex; align-items: center; justify-content: center; gap: 8px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column; /* Empilha Título e Data */
+        align-items: center;
+        justify-content: center;
     }
-    .header-title { font-size: 16px; font-weight: bold; margin: 0; line-height: 1; }
-    .header-date { font-size: 11px; opacity: 0.9; margin: 0; }
+    .header-icon { font-size: 40px; margin-bottom: 5px; }
     
-    /* Blocos */
-    .time-block {
-        background-color: #f8f9fa; padding: 5px; border-radius: 5px;
-        border-left: 3px solid #004aad; margin-bottom: 5px;
+    .header-title { 
+        font-size: 26px; /* GIGANTE */
+        font-weight: 900; 
+        margin: 0; 
+        line-height: 1.1; 
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
-    .time-label { font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
-    .time-value { font-size: 1.1rem; font-weight: bold; color: #333; margin: 0; line-height: 1.1; }
-    .location-highlight { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; margin: 0;}
+    
+    .header-date { 
+        font-size: 20px; /* DATA GRANDE */
+        font-weight: bold; 
+        color: #FFD700; /* AMARELO OURO PARA DESTAQUE */
+        margin-top: 5px;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    
+    /* Blocos de Horário */
+    .time-block {
+        background-color: #f8f9fa; padding: 8px; border-radius: 6px;
+        border-left: 4px solid #004aad; margin-bottom: 5px;
+    }
+    .time-label { font-size: 0.7rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
+    .time-value { font-size: 1.3rem; font-weight: bold; color: #333; margin: 2px 0; line-height: 1.1; }
+    .location-highlight { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; margin: 0;}
     .text-blue { color: #0d47a1; } .text-red { color: #d32f2f; }
     
     /* Barra Fina */
-    .info-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 5px; margin-bottom: 5px; }
-    .info-item { flex: 1; text-align: center; padding: 3px 2px; border-radius: 4px; color: white; }
-    .info-item-retorno { flex: 1; text-align: center; padding: 2px 2px; border-radius: 4px; background-color: white; border: 1px solid #ddd; }
-    .info-label { font-size: 0.5rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 0px; line-height: 1;}
-    .info-label-dark { font-size: 0.5rem; text-transform: uppercase; color: #666; display: block; margin-bottom: 0px; line-height: 1; font-weight: bold;}
-    .info-val { font-size: 0.9rem; font-weight: bold; line-height: 1.1; }
+    .info-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 8px; margin-bottom: 8px; }
+    .info-item { flex: 1; text-align: center; padding: 4px 2px; border-radius: 4px; color: white; }
+    .info-item-retorno { flex: 1; text-align: center; padding: 3px 2px; border-radius: 4px; background-color: white; border: 1px solid #ddd; }
+    .info-label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 0px; line-height: 1;}
+    .info-label-dark { font-size: 0.6rem; text-transform: uppercase; color: #666; display: block; margin-bottom: 0px; line-height: 1; font-weight: bold;}
+    .info-val { font-size: 1.0rem; font-weight: bold; line-height: 1.1; }
     
     .bg-purple { background-color: #7b1fa2; } .bg-green { background-color: #388e3c; }
-    .rota-separator { text-align: center; margin: 15px 0 5px 0; font-size: 0.8rem; font-weight: bold; color: #004aad; background-color: #e3f2fd; padding: 4px; border-radius: 4px; }
+    .rota-separator { text-align: center; margin: 20px 0 10px 0; font-size: 0.9rem; font-weight: bold; color: #004aad; background-color: #e3f2fd; padding: 6px; border-radius: 4px; }
 
-    div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
-    div[data-testid="metric-container"] label { font-size: 0.6rem; margin-bottom: 0px; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 0.9rem; }
+    /* Ajustes Gerais */
     div[data-testid="stTextInput"] { margin-bottom: 0px; }
+    div[data-testid="metric-container"] { background-color: #fff; border: 1px solid #eee; padding: 5px; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -127,13 +151,13 @@ if os.path.exists("rotas.csv.xlsx"):
             except: agora = datetime.now()
 
 data_hoje = agora.strftime("%d/%m")
-dias = {0:"Seg", 1:"Ter", 2:"Qua", 3:"Qui", 4:"Sex", 5:"Sáb", 6:"Dom"}
+dias = {0:"Domingo", 1:"Segunda", 2:"Terça", 3:"Quarta", 4:"Quinta", 5:"Sexta", 6:"Sábado"}
 dia_sem = dias[agora.weekday()]
 
 # --- 5. MENU LATERAL ---
 with st.sidebar:
-    st.image("https://img.icons8.com/ios-filled/100/004aad/truck.png", width=50)
-    st.markdown("### Menu")
+    st.image("https://img.icons8.com/ios-filled/100/004aad/truck.png", width=60)
+    st.markdown("### Menu Principal")
     menu = st.radio("Navegação:", ["🚛 Minha Escala", "⚙️ Gestão"])
 
 # ==================================================
@@ -141,10 +165,12 @@ with st.sidebar:
 # ==================================================
 if menu == "🚛 Minha Escala":
     
+    # CABEÇALHO ATUALIZADO (DATA AMARELA)
     st.markdown(f"""
     <div class="header-box">
-        <div style="font-size: 20px;">🚛</div>
-        <div><div class="header-title">Minha Escala</div><div class="header-date">{dia_sem}, {data_hoje}</div></div>
+        <div class="header-icon">🚛</div>
+        <div class="header-title">Minha Escala</div>
+        <div class="header-date">📅 {dia_sem}, {data_hoje}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -161,7 +187,7 @@ if menu == "🚛 Minha Escala":
                     if total > 1: st.markdown(f"<div class='rota-separator'>📍 VIAGEM {i+1} de {total}</div>", unsafe_allow_html=True)
                     
                     # Motorista
-                    st.markdown(f"""<div style='background-color: #004aad; color: white; padding: 6px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);'>👤 {row.get('Motorista', '-')}</div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style='background-color: #004aad; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);'>👤 {row.get('Motorista', '-')}</div>""", unsafe_allow_html=True)
                     
                     # Veículo
                     c1, c2, c3, c4 = st.columns(4)
@@ -173,24 +199,8 @@ if menu == "🚛 Minha Escala":
                     # Horários
                     loc_desc = str(row.get('Local descarga', 'Loja')).upper()
                     cc, cd = st.columns(2)
-                    
-                    with cc:
-                        st.markdown(f"""
-                        <div class="time-block" style="border-left-color: #0d47a1;">
-                            <div class="time-label">CHEGADA</div>
-                            <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
-                            <div class="location-highlight text-blue">AZAMBUJA</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with cd:
-                        st.markdown(f"""
-                        <div class="time-block" style="border-left-color: #d32f2f;">
-                            <div class="time-label">DESCARGA</div>
-                            <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
-                            <div class="location-highlight text-red">{loc_desc}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    with cc: st.markdown(f"""<div class="time-block" style="border-left-color: #0d47a1;"><div class="time-label">CHEGADA</div><div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div><div class="location-highlight text-blue">AZAMBUJA</div></div>""", unsafe_allow_html=True)
+                    with cd: st.markdown(f"""<div class="time-block" style="border-left-color: #d32f2f;"><div class="time-label">DESCARGA</div><div class="time-value">{row.get('Hora descarga loja', '--')}</div><div class="location-highlight text-red">{loc_desc}</div></div>""", unsafe_allow_html=True)
                     
                     # Barra Fina
                     v_sup = '0'
@@ -217,7 +227,7 @@ if menu == "🚛 Minha Escala":
                                 v = str(row.get(match, '0'))
                                 if v not in ['0', 'nan']: dd["Cat"].append(cn.replace("Azambuja ","").replace("Total ","")); dd["Qtd"].append(v)
                         if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
-                        else: st.caption("Vazio")
+                        else: st.caption("Sem carga especial.")
                         
                     if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
                          st.info(f"📱 {row['WhatsApp']}")
