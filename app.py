@@ -1,51 +1,65 @@
 import streamlit as st
 import pandas as pd
 
-# Configuração da página
-st.set_page_config(page_title="Folha de Serviço", page_icon="🚛", layout="centered")
+# Configuração da página para parecer App Nativo
+st.set_page_config(page_title="Minha Rota", page_icon="🚚", layout="centered")
 
-# --- CSS PARA ESTILO ---
+# --- CSS: ESTILO DE APLICATIVO ---
+# Isso remove margens extras, esconde menus e deixa botões grandes
 st.markdown("""
 <style>
-    .stMetric {
-        background-color: #f8f9fa;
-        padding: 5px;
-        border-radius: 5px;
-        border: 1px solid #e0e0e0;
+    /* Esconde o menu hamburger e rodapé do Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Botão Grande e Verde */
+    div.stButton > button {
+        width: 100%;
+        height: 3em;
+        font-size: 20px;
+        background-color: #007bff;
+        color: white;
+        border-radius: 10px;
+        border: none;
     }
-    /* Estilo para as etiquetas menores */
-    .small-label {
-        font-size: 0.8rem;
-        color: #666;
-        margin-bottom: 0px;
+    div.stButton > button:hover {
+        background-color: #0056b3;
     }
-    .small-value {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #333;
+    
+    /* Input de Texto Grande */
+    div[data-testid="stTextInput"] input {
+        font-size: 20px;
+        text-align: center;
+        height: 50px;
     }
+    
+    /* Cartões de Info */
+    .metric-card {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 10px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+    }
+    .big-text { font-size: 1.5rem; font-weight: bold; color: #1f2937; }
+    .small-text { font-size: 0.9rem; color: #6b7280; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("📋 Folha de Serviço Digital")
-
-# --- FUNÇÃO DE LEITURA (MANTIDA) ---
+# --- FUNÇÃO DE LEITURA ---
 def carregar_dados(uploaded_file):
     try:
-        nome_arquivo = uploaded_file.name.lower()
-        df_raw = None
-        
-        if nome_arquivo.endswith(('.xlsx', '.xls')):
+        if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
             try:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
-        
-        if df_raw is None:
-            return None, "Erro na leitura."
 
+        # Busca cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -53,119 +67,116 @@ def carregar_dados(uploaded_file):
                 header_idx = index
                 break
         
-        if header_idx == -1:
-            return None, "Não encontrei a linha de cabeçalho."
-
+        if header_idx == -1: return None
+        
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
-        df = df.loc[:, df.columns.notna()] 
+        df = df.loc[:, df.columns.notna()]
         
         if 'VPN' in df.columns:
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            return df, None
-        else:
-            return None, "Coluna VPN não encontrada."
-
-    except Exception as e:
-        return None, f"Erro: {str(e)}"
-
-# --- BARRA LATERAL ---
-st.sidebar.header("Gestão")
-arquivo = st.sidebar.file_uploader("Carregar Escala", type=['xlsx', 'xls', 'csv'])
-
-df = None
-if arquivo:
-    df, erro = carregar_dados(arquivo)
-    if erro:
-        st.error(erro)
-else:
-    try:
-        with open("teste tfs.xlsx", "rb") as f:
-            from io import BytesIO
-            arquivo_memoria = BytesIO(f.read())
-            arquivo_memoria.name = "teste tfs.xlsx"
-            df, erro = carregar_dados(arquivo_memoria)
+            return df
+        return None
     except:
-        pass
+        return None
 
-# --- TELA PRINCIPAL ---
+# --- LÓGICA DE DADOS ---
+# Tenta ler arquivo local (padrão)
+df = None
+try:
+    with open("teste tfs.xlsx", "rb") as f:
+        from io import BytesIO
+        mem = BytesIO(f.read())
+        mem.name = "teste tfs.xlsx"
+        df = carregar_dados(mem)
+except:
+    pass
+
+# --- ÁREA DE ADMIN (ESCONDIDA) ---
+# Só aparece se clicar na sidebar, útil para você atualizar o arquivo pelo celular
+with st.sidebar:
+    st.header("🔧 Área do Gestor")
+    senha = st.text_input("Senha Admin", type="password")
+    if senha == "admin123": # <--- Mude sua senha aqui se quiser
+        upload = st.file_uploader("Atualizar Escala Hoje", type=['xlsx','csv'])
+        if upload:
+            df_up = carregar_dados(upload)
+            if df_up is not None:
+                df = df_up
+                st.success("Escala Atualizada!")
+
+# --- TELA DO APP (MOTORISTA) ---
+st.markdown("<h2 style='text-align: center;'>🚚 Minha Escala</h2>", unsafe_allow_html=True)
 
 if df is not None:
-    st.markdown("---")
-    st.subheader("🔒 Acesso do Motorista")
-    vpn_input = st.text_input("Insira o número da VPN:", max_chars=10, placeholder="Ex: 76628")
+    st.write("") # Espaço
+    vpn_input = st.text_input("", placeholder="Digite sua VPN aqui", max_chars=10)
     
-    if st.button("Consultar Escala", type="primary"):
+    if st.button("🔍 VER MINHA ROTA"):
         vpn_input = vpn_input.strip()
-        
         if vpn_input:
             res = df[df['VPN'] == vpn_input]
-            
             if not res.empty:
                 row = res.iloc[0]
                 
-                # --- CABEÇALHO ---
-                st.success(f"Motorista: **{row.get('Motorista', 'N/A')}**")
+                # NOME
+                st.markdown(f"<div style='text-align:center; margin-bottom:15px; font-size:1.2rem;'>Olá, <b>{row.get('Motorista', 'Motorista')}</b></div>", unsafe_allow_html=True)
                 
-                # --- ID ---
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Rota", str(row.get('ROTA', '-')))
-                c2.metric("Matrícula", str(row.get('Matrícula', '-')))
-                c3.metric("Loja Nº", str(row.get('Nº LOJA', '-')))
+                # CARTÕES GRANDES (Mobile Friendly)
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="small-text">ROTA</div>
+                        <div class="big-text">{row.get('ROTA', '-')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <div class="small-text">LOJA</div>
+                        <div class="big-text">{row.get('Nº LOJA', '-')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                # --- OPERAÇÃO (AJUSTADO) ---
-                st.markdown("### 🕒 Operação")
+                # HORÁRIOS EM DESTAQUE
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: #e3f2fd; border: 1px solid #90caf9;">
+                    <div class="small-text">CHEGADA AZAMBUJA</div>
+                    <div class="big-text" style="color: #0d47a1;">{row.get('Hora chegada Azambuja', '--')}</div>
+                </div>
+                <div class="metric-card" style="background-color: #fff3e0; border: 1px solid #ffcc80;">
+                    <div class="small-text">DESCARGA LOJA</div>
+                    <div class="big-text" style="color: #e65100;">{row.get('Hora descarga loja', '--')}</div>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                # Colunas: 30% | 30% | 15% | 15%
-                k1, k2, k3, k4 = st.columns([3, 3, 1.5, 1.5])
-                
-                with k1:
-                    st.info(f"**Chegada Azambuja**\n\n### {row.get('Hora chegada Azambuja', '--')}")
-                with k2:
-                    st.warning(f"**Descarga Loja**\n\n### {row.get('Hora descarga loja', '--')}")
-                
-                # Retorno e Tipo menores e sem caixa colorida
-                with k3:
-                    st.markdown('<p class="small-label">Retorno</p>', unsafe_allow_html=True)
-                    st.markdown(f'<p class="small-value">{row.get("Retorno", "--")}</p>', unsafe_allow_html=True)
-                with k4:
-                    st.markdown('<p class="small-label">Tipo</p>', unsafe_allow_html=True)
-                    st.markdown(f'<p class="small-value">{row.get("TIPO", "-")}</p>', unsafe_allow_html=True)
+                # INFORMAÇÃO RETORNO
+                if row.get('Retorno'):
+                     st.error(f"⚠️ **RETORNO:** {row.get('Retorno')}")
 
-                st.caption(f"📍 Local Descarga: {row.get('Local descarga', 'Não especificado')}")
-
-                # --- CARGA ---
-                st.markdown("---")
-                st.markdown("### 📦 Manifesto")
-                
-                dados_carga = {
-                    "Categoria": ["🌡️ Ambiente", "❄️ Congelados", "🍖 Salsesen", "🍦 Frota Refrig.", "🐟 Peixe", "🥩 Talho", "📦 Suportes"],
-                    "Qtd": [
-                        row.get('Azambuja Ambiente', '0'),
-                        row.get('Azambuja Congelados', '0'),
-                        row.get('Salsesen Azambuja', '0'),
-                        row.get('Frota Refrigerado', '0'),
-                        row.get('Peixe', '0'),
-                        row.get('Talho', '0'),
-                        row.get('Total Suportes', '0')
-                    ]
-                }
-                
-                df_carga = pd.DataFrame(dados_carga)
-                # Filtra linhas onde a quantidade é 0 ou vazia para limpar a tela
-                df_carga = df_carga[ (df_carga['Qtd'].astype(str) != '0') & (df_carga['Qtd'].astype(str) != 'nan') ]
-                
-                if not df_carga.empty:
-                    st.table(df_carga.set_index('Categoria'))
-                else:
-                    st.info("Sem cargas registradas para esta rota.")
-
-                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
-                     st.info(f"📱 **Obs:** {row['WhatsApp']}")
+                # TABELA DE CARGA SIMPLIFICADA
+                with st.expander("📦 VER CARGA (Clique Aqui)", expanded=False):
+                    dados = {
+                        "Item": ["Ambiente", "Congelados", "Peixe", "Talho", "Suportes"],
+                        "Qtd": [
+                            row.get('Azambuja Ambiente',0), 
+                            row.get('Azambuja Congelados',0),
+                            row.get('Peixe',0),
+                            row.get('Talho',0),
+                            row.get('Total Suportes',0)
+                        ]
+                    }
+                    d_show = pd.DataFrame(dados)
+                    # Só mostra o que tem quantidade > 0
+                    d_show = d_show[d_show['Qtd'].astype(str) != '0'] 
+                    st.table(d_show.set_index('Item'))
+                    
+                    st.caption(f"Local: {row.get('Local descarga','-')}")
 
             else:
-                st.error("⛔ VPN não encontrada.")
+                st.error("❌ VPN não encontrada.")
         else:
-            st.warning("Por favor, digite a VPN.")
+            st.warning("⚠️ Digite a VPN.")
 else:
-    st.info("👈 Carregue a escala na barra lateral.")
+    st.info("Aguardando escala...")
