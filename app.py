@@ -43,7 +43,7 @@ def carregar_dados(uploaded_file):
 
 # --- 2. TENTA CARREGAR O ARQUIVO AUTOMATICAMENTE ---
 df = None
-nome_arquivo_oficial = "rotas.csv.xlsx" # O nome exato do seu arquivo
+nome_arquivo_oficial = "rotas.csv.xlsx" # Nome exato do arquivo
 
 try:
     if os.path.exists(nome_arquivo_oficial):
@@ -67,11 +67,11 @@ with st.sidebar:
                 df = novo_df
                 st.success("Atualizado com sucesso!")
 
-# --- 4. TELA DO MOTORISTA (COM O LAYOUT PEDIDO) ---
+# --- 4. TELA DO MOTORISTA ---
 st.title("🚚 Minha Escala")
 
 if df is not None:
-    # Usei st.form para evitar que a página fique recarregando enquanto digita
+    # Formulário para garantir que a digitação não trava
     with st.form(key='busca'):
         vpn_input = st.text_input("Digite o número da VPN:", placeholder="Ex: 76628")
         btn_buscar = st.form_submit_button("🔍 BUSCAR ROTA")
@@ -87,22 +87,24 @@ if df is not None:
                 # --- IDENTIFICAÇÃO ---
                 st.success(f"Motorista: **{row.get('Motorista', '-') }**")
                 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("ROTA", str(row.get('ROTA', '-')))
-                c2.metric("LOJA", str(row.get('Nº LOJA', '-')))
-                c3.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
+                # MUDANÇA AQUI: 4 Colunas, com Matrícula na esquerda e Móvel adicionado
+                c1, c2, c3, c4 = st.columns(4)
+                
+                c1.metric("MATRÍCULA", str(row.get('Matrícula', '-'))) # <--- Lado Esquerdo
+                c2.metric("ROTA", str(row.get('ROTA', '-')))
+                c3.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                c4.metric("MÓVEL", str(row.get('Móvel', '-')))         # <--- Adicionado
                 
                 st.markdown("---")
                 
-                # --- HORÁRIOS (GRANDES) ---
+                # --- HORÁRIOS ---
                 col_h1, col_h2 = st.columns(2)
                 with col_h1:
                     st.info(f"**Chegada Azambuja**\n\n### {row.get('Hora chegada Azambuja', '--')}")
                 with col_h2:
                     st.warning(f"**Descarga Loja**\n\n### {row.get('Hora descarga loja', '--')}")
 
-                # --- RETORNO E TIPO (PEQUENOS E PRÓXIMOS) ---
-                # Usamos HTML simples para deixá-los menores e lado a lado
+                # --- RETORNO E TIPO (PEQUENOS) ---
                 st.markdown(f"""
                 <div style="display: flex; gap: 20px; margin-top: 10px; padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
                     <div>
@@ -118,10 +120,9 @@ if df is not None:
 
                 st.caption(f"📍 Local Descarga: {row.get('Local descarga', '-')}")
 
-                # --- TABELA DE CARGA (DETALHADA) ---
+                # --- TABELA DE CARGA ---
                 st.subheader("📦 Manifesto de Carga")
                 
-                # Lista de colunas para verificar
                 cols_carga = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
                               "Frota Refrigerado", "Peixe", "Talho", "Total Suportes"]
                 
@@ -129,9 +130,7 @@ if df is not None:
                 
                 for item in cols_carga:
                     qtd = str(row.get(item, '0'))
-                    # Só mostra se tiver quantidade
                     if qtd != '0' and qtd.lower() != 'nan':
-                        # Limpa o nome para ficar bonito na tabela
                         nome_bonito = item.replace("Azambuja ", "").replace("Total ", "")
                         dados_carga["Categoria"].append(nome_bonito)
                         dados_carga["Quantidade"].append(qtd)
