@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz 
 import re 
 
@@ -17,22 +17,18 @@ ADMINS = {
     "Escritório": "office99",
 }
 
-# --- 2. ESTILO CSS (ALTA VISIBILIDADE) ---
+# --- 2. ESTILO CSS ---
 st.markdown("""
 <style>
-    /* Forçar a visibilidade do botão do Menu e Cabeçalho */
     #MainMenu {visibility: visible !important;}
     header {visibility: visible !important;}
     footer {visibility: hidden;}
+    .block-container {padding-top: 1rem; padding-bottom: 3rem;}
     
-    .block-container {padding-top: 2rem; padding-bottom: 3rem;}
+    /* Menu Lateral */
+    .css-1d391kg, [data-testid="stSidebar"] { font-size: 16px !important; background-color: #f0f2f6; }
     
-    /* Menu Lateral - Aumentar Texto */
-    .css-1d391kg, [data-testid="stSidebar"] {
-        font-size: 18px !important;
-    }
-    
-    /* --- CABEÇALHO NOVO (MAIOR E MAIS VISÍVEL) --- */
+    /* CABEÇALHO (VISUAL LIMPO E DATA GRANDE) */
     .header-box {
         background: linear-gradient(135deg, #004aad 0%, #003380 100%);
         padding: 15px;
@@ -41,28 +37,15 @@ st.markdown("""
         color: white;
         margin-bottom: 15px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        display: flex;
-        flex-direction: column; /* Empilha Título e Data */
-        align-items: center;
-        justify-content: center;
     }
-    .header-icon { font-size: 40px; margin-bottom: 5px; }
-    
     .header-title { 
-        font-size: 26px; /* GIGANTE */
-        font-weight: 900; 
-        margin: 0; 
-        line-height: 1.1; 
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        font-size: 24px; font-weight: 900; margin: 0; line-height: 1.1; 
+        text-transform: uppercase; letter-spacing: 1px;
     }
-    
     .header-date { 
-        font-size: 20px; /* DATA GRANDE */
-        font-weight: bold; 
-        color: #FFD700; /* AMARELO OURO PARA DESTAQUE */
-        margin-top: 5px;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        font-size: 22px; /* DATA BEM VISÍVEL */
+        font-weight: bold; color: #FFD700; /* AMARELO */
+        margin-top: 5px; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     }
     
     /* Blocos de Horário */
@@ -92,19 +75,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES INTELIGENTES ---
+# --- 3. FUNÇÕES INTELIGENTES (CORRIGIDAS) ---
 
 def extrair_data_do_arquivo(df_raw):
-    linhas_para_verificar = 10
+    # Procura data nas primeiras 20 linhas
+    linhas_para_verificar = 20
+    
+    # PALAVRAS-CHAVE PARA DAR PRIORIDADE (Evita pegar datas aleatórias)
+    keywords_prioridade = ["dia", "data", "escala", "serviço"]
+    
+    # 1. TENTA ACHAR DATA QUE TENHA "DIA" OU "DATA" NA MESMA LINHA (Prioridade Alta)
     for i in range(min(len(df_raw), linhas_para_verificar)):
         linha = df_raw.iloc[i].astype(str).values
-        texto_linha = " ".join(linha)
+        texto_linha = " ".join(linha).lower()
+        
+        # Só aceita se tiver uma palavra chave
+        if any(k in texto_linha for k in keywords_prioridade):
+            # Procura dd/mm/aaaa ou dd-mm-aaaa
+            match = re.search(r'(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})', texto_linha)
+            if match:
+                dia, mes, ano = match.groups()
+                if len(ano) == 2: ano = "20" + ano
+                try: return datetime(int(ano), int(mes), int(dia))
+                except: continue
+                
+            # Procura formato yyyy-mm-dd (caso o Excel tenha convertido)
+            match_iso = re.search(r'(\d{4})[-/](\d{1,2})[-/](\d{1,2})', texto_linha)
+            if match_iso:
+                ano, mes, dia = match_iso.groups()
+                try: return datetime(int(ano), int(mes), int(dia))
+                except: continue
+
+    # 2. SE NÃO ACHOU COM PALAVRA CHAVE, TENTA QUALQUER DATA (Fallback)
+    for i in range(min(len(df_raw), linhas_para_verificar)):
+        linha = df_raw.iloc[i].astype(str).values
+        texto_linha = " ".join(linha).lower()
+        
         match = re.search(r'(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})', texto_linha)
         if match:
             dia, mes, ano = match.groups()
             if len(ano) == 2: ano = "20" + ano
             try: return datetime(int(ano), int(mes), int(dia))
             except: continue
+            
     return None
 
 def ler_rotas(uploaded_file):
@@ -134,25 +147,39 @@ def ler_rotas(uploaded_file):
         return df, data_encontrada
     except: return None, None
 
-# --- 4. CARREGAMENTO ---
+# --- 4. CARREGAMENTO E DATA ---
 df_rotas = None
-data_escala = None
+data_final = None
 
+# Tenta carregar arquivo
 if os.path.exists("rotas.csv.xlsx"):
     with open("rotas.csv.xlsx", "rb") as f:
         from io import BytesIO
         mem = BytesIO(f.read()); mem.name = "rotas.csv.xlsx"
-        df_rotas, data_encontrada = ler_rotas(mem)
-        
-        if data_encontrada:
-            agora = data_encontrada
-        else:
-            try: fuso = pytz.timezone('Europe/Lisbon'); agora = datetime.now(fuso)
-            except: agora = datetime.now()
+        df_rotas, data_detectada = ler_rotas(mem)
 
-data_hoje = agora.strftime("%d/%m")
+# Lógica de Data:
+# 1. Verifica se existe arquivo de configuração manual (criado pelo Admin)
+if os.path.exists("data_manual.txt"):
+    try:
+        with open("data_manual.txt", "r") as f:
+            data_str = f.read().strip()
+            data_final = datetime.strptime(data_str, "%Y-%m-%d")
+    except: pass
+
+# 2. Se não houver manual, usa a detectada no Excel
+if data_final is None and 'data_detectada' in locals() and data_detectada:
+    data_final = data_detectada
+
+# 3. Se tudo falhar, usa hoje
+if data_final is None:
+    try: fuso = pytz.timezone('Europe/Lisbon'); data_final = datetime.now(fuso)
+    except: data_final = datetime.now()
+
+# Formata para exibir
+data_hoje_str = data_final.strftime("%d/%m")
 dias = {0:"Domingo", 1:"Segunda", 2:"Terça", 3:"Quarta", 4:"Quinta", 5:"Sexta", 6:"Sábado"}
-dia_sem = dias[agora.weekday()]
+dia_sem = dias[data_final.weekday()]
 
 # --- 5. MENU LATERAL ---
 with st.sidebar:
@@ -165,12 +192,11 @@ with st.sidebar:
 # ==================================================
 if menu == "🚛 Minha Escala":
     
-    # CABEÇALHO ATUALIZADO (DATA AMARELA)
+    # CABEÇALHO (AGORA COM A DATA CERTA)
     st.markdown(f"""
     <div class="header-box">
-        <div class="header-icon">🚛</div>
         <div class="header-title">Minha Escala</div>
-        <div class="header-date">📅 {dia_sem}, {data_hoje}</div>
+        <div class="header-date">📅 {dia_sem}, {data_hoje_str}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -232,10 +258,11 @@ if menu == "🚛 Minha Escala":
                     if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
                          st.info(f"📱 {row['WhatsApp']}")
             else: st.error("❌ VPN não encontrada.")
+        else: st.warning("Digite a VPN.")
     else: st.warning("⚠️ Aguardando escala.")
 
 # ==================================================
-# PÁGINA 2: GESTÃO (MULTI ADMIN)
+# PÁGINA 2: GESTÃO
 # ==================================================
 elif menu == "⚙️ Gestão":
     st.header("🔐 Acesso Restrito")
@@ -245,14 +272,39 @@ elif menu == "⚙️ Gestão":
     if usuario != "Selecionar..." and senha == ADMINS.get(usuario):
         st.success(f"Bem-vindo, {usuario}!")
         st.markdown("---")
-        up_rotas = st.file_uploader("Arquivo Rotas", type=['xlsx','csv'])
+        
+        # 1. UPLOAD
+        st.subheader("1. Atualizar Arquivo")
+        up_rotas = st.file_uploader("Arquivo Rotas (Excel/CSV)", type=['xlsx','csv'])
         if up_rotas:
-            df_novo, data_detectada = ler_rotas(up_rotas)
+            df_novo, data_det = ler_rotas(up_rotas)
             if df_novo is not None: 
                 df_rotas = df_novo
+                # Se carregou arquivo novo, apaga a data manual antiga para tentar detectar a nova
+                if os.path.exists("data_manual.txt"): os.remove("data_manual.txt")
+                
                 msg = "✅ Rotas atualizadas!"
-                if data_detectada:
-                    msg += f" (Data detectada: {data_detectada.strftime('%d/%m')})"
+                if data_det: msg += f" Data detetada: {data_det.strftime('%d/%m')}"
                 st.success(msg)
-            else: st.error("Erro ao ler arquivo.")
+            else: st.error("Erro no arquivo.")
+            
+        st.markdown("---")
+        
+        # 2. CONTROLO MANUAL DE DATA
+        st.subheader("2. Corrigir Data da Escala")
+        st.info("Use isto se a data automática estiver errada.")
+        
+        # Define valor padrão do seletor
+        padrao = data_final.date() if data_final else datetime.now().date()
+        nova_data = st.date_input("Selecionar Data Correta:", value=padrao)
+        
+        if st.button("Salvar Data Manual"):
+            with open("data_manual.txt", "w") as f:
+                f.write(str(nova_data))
+            st.success(f"Data fixada em {nova_data.strftime('%d/%m')}! (Dê Reboot App para aplicar)")
+            
+        if st.button("Voltar ao Automático"):
+            if os.path.exists("data_manual.txt"): os.remove("data_manual.txt")
+            st.success("Modo Automático restaurado.")
+
     elif senha: st.error("Senha incorreta!")
