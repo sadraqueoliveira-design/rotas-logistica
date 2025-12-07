@@ -45,25 +45,36 @@ st.markdown("""
         background-color: #f8f9fa;
         padding: 15px;
         border-radius: 8px;
-        border-left: 5px solid #004aad;
+        border-left: 6px solid #004aad;
         margin-bottom: 10px;
     }
     .time-label { font-size: 0.8rem; color: #666; font-weight: bold; text-transform: uppercase; }
-    .time-value { font-size: 1.5rem; font-weight: bold; color: #333; margin: 5px 0; }
-    .time-location { font-size: 1.0rem; color: #004aad; font-weight: bold; }
+    .time-value { font-size: 1.8rem; font-weight: bold; color: #333; margin: 5px 0; }
     
-    /* Estilo das Etiquetas Pequenas (Suportes, Retorno, Tipo) */
+    /* Local de Descarga em destaque */
+    .location-highlight { 
+        font-size: 1.2rem; 
+        color: #d32f2f; /* Vermelho/Laranja para destaque */
+        font-weight: 900; 
+        text-transform: uppercase;
+        margin-top: 5px;
+    }
+    
+    /* Etiquetas Pequenas (Suportes, Retorno, Tipo) */
     .tag-box {
-        padding: 10px;
+        padding: 8px;
         border-radius: 6px;
         text-align: center;
         color: white;
         font-weight: bold;
-        margin-bottom: 5px;
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        font-size: 0.9rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
-    .tag-label { font-size: 0.75rem; opacity: 0.9; font-weight: normal; display: block; margin-bottom: 2px; }
-    .tag-value { font-size: 1.1rem; }
+    .tag-title { font-size: 0.7rem; opacity: 0.9; font-weight: normal; display: block; }
     
     div[data-testid="metric-container"] {
         background-color: #ffffff;
@@ -83,7 +94,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 5. FUNÇÃO DE LEITURA (Melhorada) ---
+# --- 5. FUNÇÃO DE LEITURA (Ultra Robusta) ---
 def carregar_dados(uploaded_file):
     try:
         if uploaded_file.name.lower().endswith('xlsx'):
@@ -104,7 +115,8 @@ def carregar_dados(uploaded_file):
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
         
-        # Limpa nomes das colunas (remove espaços extras que causam erro)
+        # LIMPEZA PROFUNDA DOS NOMES DAS COLUNAS
+        # Remove espaços antes/depois e converte para garantir match
         df.columns = df.columns.astype(str).str.strip()
         
         df = df.loc[:, df.columns.notna()]
@@ -114,7 +126,7 @@ def carregar_dados(uploaded_file):
         return None
     except: return None
 
-# Carrega arquivo local
+# Carrega arquivo
 df = None
 nome = "rotas.csv.xlsx"
 if os.path.exists(nome):
@@ -151,10 +163,9 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Nome
                 st.info(f"👤 **{row.get('Motorista', '-') }**")
                 
-                # Linha 1: Dados Veículo
+                # Info Veículo
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
                 c2.metric("MÓVEL", str(row.get('Móvel', '-')))
@@ -163,75 +174,73 @@ if df is not None:
                 
                 st.markdown("---")
                 
-                # Linha 2: Horários
-                local_descarga = row.get('Local descarga', 'Loja')
+                # --- HORÁRIOS & LOCAL (AQUI ESTÁ A MUDANÇA) ---
+                local_descarga = str(row.get('Local descarga', 'Loja')).upper() # Tudo maiúsculo para destaque
                 
                 cc, cd = st.columns(2)
+                
+                # Bloco Esquerdo: Azambuja
                 with cc:
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #0d47a1;">
-                        <div class="time-label">CHEGADA AZB</div>
+                        <div class="time-label">CARREGAMENTO</div>
                         <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                        <div style="font-size: 0.9rem; color: #666;">📍 AZAMBUJA</div>
                     </div>
                     """, unsafe_allow_html=True)
+                
+                # Bloco Direito: Descarga (COM NOME GRANDE)
                 with cd:
                     st.markdown(f"""
-                    <div class="time-block" style="border-left-color: #e65100;">
+                    <div class="time-block" style="border-left-color: #d32f2f;">
                         <div class="time-label">DESCARGA</div>
                         <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
-                        <div class="time-location">📍 {local_descarga}</div>
+                        <div class="location-highlight">📍 {local_descarga}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # Linha 3: Suportes, Retorno e Tipo (Estilo Botão Colorido)
+                # --- ETIQUETAS PEQUENAS (3 Colunas) ---
                 k1, k2, k3 = st.columns(3)
                 
-                # Suportes (Cor Roxa para destaque)
-                val_suportes = str(row.get('Total Suportes', '0'))
+                # 1. Suportes (Cor Roxa, Pequeno)
+                # Tenta buscar coluna com variações de nome
+                val_suportes = '0'
+                for col in df.columns:
+                    if "total suportes" in col.lower():
+                        val_suportes = str(row.get(col, '0'))
+                        break
+                
                 with k1:
                     st.markdown(f"""
-                    <div class="tag-box" style="background-color: #6a1b9a;">
-                        <span class="tag-label">SUPORTES</span>
-                        <span class="tag-value">📦 {val_suportes}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Retorno (Cor Vermelha/Laranja)
-                with k2:
-                    st.markdown(f"""
-                    <div class="tag-box" style="background-color: #ef6c00;">
-                        <span class="tag-label">RETORNO</span>
-                        <span class="tag-value">🔙 {row.get('Retorno', '-')}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Tipo (Cor Verde)
-                with k3:
-                    st.markdown(f"""
-                    <div class="tag-box" style="background-color: #2e7d32;">
-                        <span class="tag-label">TIPO</span>
-                        <span class="tag-value">📋 {row.get('TIPO', '-')}</span>
+                    <div class="tag-box" style="background-color: #7b1fa2;">
+                        <span class="tag-title">SUPORTES</span>
+                        <span style="font-size: 1.1rem;">📦 {val_suportes}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Tabela de Carga Detalhada
+                # 2. Retorno (Laranja)
+                with k2:
+                    st.markdown(f"""
+                    <div class="tag-box" style="background-color: #f57c00;">
+                        <span class="tag-title">RETORNO</span>
+                        <span style="font-size: 1.1rem;">🔙 {row.get('Retorno', '-')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # 3. Tipo (Verde)
+                with k3:
+                    st.markdown(f"""
+                    <div class="tag-box" style="background-color: #388e3c;">
+                        <span class="tag-title">TIPO</span>
+                        <span style="font-size: 1.1rem;">📋 {row.get('TIPO', '-')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # Carga
                 with st.expander("🔎 Ver Detalhes da Carga", expanded=True):
+                    # Removemos 'Total Suportes' da lista pois já está no topo
                     cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
-                            "Frota Refrigerado", "Peixe", "Talho"] 
-                    dd = {"Cat": [], "Qtd": []}
-                    for i in cols:
-                        v = str(row.get(i, '0'))
-                        if v != '0' and v.lower() != 'nan':
-                            dd["Cat"].append(i.replace("Azambuja ", "").replace("Total ", ""))
-                            dd["Qtd"].append(v)
-                    if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
-                    else: st.caption("Sem carga especial.")
-                
-                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
-                     st.info(f"📱 Obs: {row['WhatsApp']}")
-            else: st.error("❌ VPN não encontrada.")
-        else: st.warning("Digite a VPN.")
-else:
-    st.warning("⚠️ Aguardando arquivo.")
+                            "Frota Refrigerado", "Peixe", "Talho"]
+                    dd = {"Cat": [], "
