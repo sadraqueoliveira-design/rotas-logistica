@@ -22,7 +22,7 @@ data_hoje = agora.strftime("%d/%m/%Y")
 dias = {0:"Segunda", 1:"Terça", 2:"Quarta", 3:"Quinta", 4:"Sexta", 5:"Sábado", 6:"Domingo"}
 dia_sem = dias[agora.weekday()]
 
-# --- 3. ESTILO (CSS) ---
+# --- 3. ESTILO (CSS AGRESSIVO PARA MUDAR O TAMANHO) ---
 st.markdown("""
 <style>
     #MainMenu, footer, header {visibility: hidden;}
@@ -30,56 +30,54 @@ st.markdown("""
     
     .header-box {
         background-color: #004aad;
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
         text-align: center;
         color: white;
         margin-bottom: 20px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-    .header-title { font-size: 24px; font-weight: bold; margin: 0; }
-    .header-date { font-size: 16px; opacity: 0.9; margin-top: 5px; }
+    .header-title { font-size: 22px; font-weight: bold; margin: 0; }
+    .header-date { font-size: 14px; opacity: 0.9; margin-top: 2px; }
     
     /* Blocos de Horário */
     .time-block {
         background-color: #f8f9fa;
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
-        border-left: 6px solid #004aad;
+        border-left: 5px solid #004aad;
         margin-bottom: 10px;
     }
-    .time-label { font-size: 0.8rem; color: #666; font-weight: bold; text-transform: uppercase; }
-    .time-value { font-size: 1.8rem; font-weight: bold; color: #333; margin: 5px 0; }
+    .time-label { font-size: 0.7rem; color: #666; font-weight: bold; text-transform: uppercase; }
+    .time-value { font-size: 1.4rem; font-weight: bold; color: #333; margin: 2px 0; }
     
     .location-highlight { 
-        font-size: 1.2rem; 
+        font-size: 1.1rem; 
         color: #d32f2f; 
         font-weight: 900; 
         text-transform: uppercase;
-        margin-top: 5px;
     }
     
-    /* MUDANÇA AQUI: Etiquetas Mais Compactas (Menores) */
-    .tag-box {
-        padding: 5px; /* Menos enchimento */
-        border-radius: 5px;
+    /* --- ETIQUETAS MINI (NOVO ESTILO) --- */
+    .mini-tag {
+        padding: 4px !important;
+        border-radius: 4px;
         text-align: center;
         color: white;
-        font-weight: bold;
-        box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        min-height: 50px; /* Altura fixa pequena */
+        margin-bottom: 0px;
+        font-size: 12px !important; /* Letra pequena forçada */
+        line-height: 1.2;
     }
-    .tag-title { font-size: 0.65rem; opacity: 0.9; font-weight: normal; display: block; margin-bottom: 2px; text-transform: uppercase;}
-    .tag-value { font-size: 0.95rem; line-height: 1.1; } /* Letra do valor menor */
+    .mini-value {
+        font-size: 16px !important; /* Número um pouco maior */
+        font-weight: bold;
+    }
     
     div[data-testid="metric-container"] {
         background-color: #ffffff;
         border: 1px solid #e0e0e0;
-        padding: 8px;
-        border-radius: 8px;
+        padding: 5px;
+        border-radius: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -87,7 +85,7 @@ st.markdown("""
 # --- 4. CABEÇALHO ---
 st.markdown(f"""
 <div class="header-box">
-    <div style="font-size: 40px;">🚛</div>
+    <div style="font-size: 30px;">🚛</div>
     <div class="header-title">Minha Escala</div>
     <div class="header-date">📅 {dia_sem}, {data_hoje}</div>
 </div>
@@ -113,10 +111,7 @@ def carregar_dados(uploaded_file):
         
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
-        
-        # Limpeza
         df.columns = df.columns.astype(str).str.strip()
-        
         df = df.loc[:, df.columns.notna()]
         if 'VPN' in df.columns:
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
@@ -182,7 +177,7 @@ if df is not None:
                     <div class="time-block" style="border-left-color: #0d47a1;">
                         <div class="time-label">CARREGAMENTO</div>
                         <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
-                        <div style="font-size: 0.9rem; color: #666;">📍 AZAMBUJA</div>
+                        <div style="font-size: 0.8rem; color: #666;">📍 AZAMBUJA</div>
                     </div>
                     """, unsafe_allow_html=True)
                 
@@ -191,11 +186,11 @@ if df is not None:
                     <div class="time-block" style="border-left-color: #d32f2f;">
                         <div class="time-label">DESCARGA</div>
                         <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
-                        <div class="location-highlight">📍 {local_descarga}</div>
+                        <div class="location-highlight">{local_descarga}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # --- BLOCOS COMPACTOS (SUPORTES | RETORNO | TIPO) ---
+                # --- BLOCOS MINIATURA (SUPORTES | RETORNO | TIPO) ---
                 k1, k2, k3 = st.columns(3)
                 
                 # Suportes
@@ -207,27 +202,27 @@ if df is not None:
                 
                 with k1:
                     st.markdown(f"""
-                    <div class="tag-box" style="background-color: #7b1fa2;">
-                        <span class="tag-title">SUPORTES</span>
-                        <span class="tag-value">📦 {val_suportes}</span>
+                    <div class="mini-tag" style="background-color: #7b1fa2;">
+                        SUPORTES<br>
+                        <span class="mini-value">📦 {val_suportes}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
                 # Retorno
                 with k2:
                     st.markdown(f"""
-                    <div class="tag-box" style="background-color: #f57c00;">
-                        <span class="tag-title">RETORNO</span>
-                        <span class="tag-value">🔙 {row.get('Retorno', '-')}</span>
+                    <div class="mini-tag" style="background-color: #f57c00;">
+                        RETORNO<br>
+                        <span class="mini-value">{row.get('Retorno', '-')}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
                 # Tipo
                 with k3:
                     st.markdown(f"""
-                    <div class="tag-box" style="background-color: #388e3c;">
-                        <span class="tag-title">TIPO</span>
-                        <span class="tag-value">📋 {row.get('TIPO', '-')}</span>
+                    <div class="mini-tag" style="background-color: #388e3c;">
+                        TIPO<br>
+                        <span class="mini-value">{row.get('TIPO', '-')}</span>
                     </div>
                     """, unsafe_allow_html=True)
                 
