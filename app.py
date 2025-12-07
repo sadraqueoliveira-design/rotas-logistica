@@ -82,6 +82,16 @@ st.markdown("""
     .bg-orange { background-color: #f57c00; }
     .bg-green { background-color: #388e3c; }
 
+    /* Separador de Rotas */
+    .rota-separator {
+        text-align: center;
+        margin: 20px 0;
+        font-weight: bold;
+        color: #555;
+        border-top: 2px dashed #ccc;
+        padding-top: 10px;
+    }
+
     div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
     div[data-testid="metric-container"] label { font-size: 0.6rem; margin-bottom: 0px; }
     div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 0.9rem; }
@@ -155,96 +165,108 @@ with st.sidebar:
 if df is not None:
     with st.form(key='busca'):
         vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Digite a VPN...")
-        btn = st.form_submit_button("🔍 VER ROTA", type="primary")
+        btn = st.form_submit_button("🔍 VER ROTAS", type="primary")
 
     if btn:
         vpn = vpn.strip()
         if vpn:
+            # AQUI ESTÁ A MUDANÇA: Buscamos TODAS as linhas, não apenas a primeira
             res = df[df['VPN'] == vpn]
+            
             if not res.empty:
-                row = res.iloc[0]
+                total_rotas = len(res)
                 
-                # NOME DO MOTORISTA (AZUL E BRANCO)
-                st.markdown(f"""
-                <div style='background-color: #004aad; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
-                    👤 {row.get('Motorista', '-')}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Veículo
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("MATR", str(row.get('Matrícula', '-')))
-                c2.metric("MÓVEL", str(row.get('Móvel', '-')))
-                c3.metric("ROTA", str(row.get('ROTA', '-')))
-                c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
-                
-                # Horários
-                local_descarga = str(row.get('Local descarga', 'Loja')).upper()
-                
-                cc, cd = st.columns(2)
-                
-                # Bloco CHEGADA
-                with cc:
+                # Loop para mostrar cada rota encontrada
+                for i, (index, row) in enumerate(res.iterrows()):
+                    
+                    numero_rota = i + 1
+                    
+                    # Se houver mais de uma rota, mostra um separador
+                    if total_rotas > 1:
+                         st.markdown(f"<div class='rota-separator'>📍 VIAGEM {numero_rota} de {total_rotas}</div>", unsafe_allow_html=True)
+                    
+                    # --- NOME DO MOTORISTA ---
                     st.markdown(f"""
-                    <div class="time-block" style="border-left-color: #0d47a1;">
-                        <div class="time-label">CHEGADA</div>
-                        <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
-                        <div class="location-highlight text-blue">AZAMBUJA</div>
+                    <div style='background-color: #004aad; color: white; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);'>
+                        👤 {row.get('Motorista', '-')}
                     </div>
                     """, unsafe_allow_html=True)
-                
-                # Bloco DESCARGA
-                with cd:
+                    
+                    # Veículo
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("MATR", str(row.get('Matrícula', '-')))
+                    c2.metric("MÓVEL", str(row.get('Móvel', '-')))
+                    c3.metric("ROTA", str(row.get('ROTA', '-')))
+                    c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                    
+                    # Horários
+                    local_descarga = str(row.get('Local descarga', 'Loja')).upper()
+                    
+                    cc, cd = st.columns(2)
+                    
+                    # Bloco CHEGADA
+                    with cc:
+                        st.markdown(f"""
+                        <div class="time-block" style="border-left-color: #0d47a1;">
+                            <div class="time-label">CHEGADA</div>
+                            <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                            <div class="location-highlight text-blue">AZAMBUJA</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Bloco DESCARGA
+                    with cd:
+                        st.markdown(f"""
+                        <div class="time-block" style="border-left-color: #d32f2f;">
+                            <div class="time-label">DESCARGA</div>
+                            <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
+                            <div class="location-highlight text-red">{local_descarga}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # BARRA SUPER FINA
+                    val_suportes = '0'
+                    for col in df.columns:
+                        if "total suportes" in col.lower():
+                            val_suportes = str(row.get(col, '0'))
+                            break
+                    
                     st.markdown(f"""
-                    <div class="time-block" style="border-left-color: #d32f2f;">
-                        <div class="time-label">DESCARGA</div>
-                        <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
-                        <div class="location-highlight text-red">{local_descarga}</div>
+                    <div class="info-row">
+                        <div class="info-item bg-purple">
+                            <span class="info-label">SUPORTES</span>
+                            <span class="info-val">📦 {val_suportes}</span>
+                        </div>
+                        <div class="info-item bg-orange">
+                            <span class="info-label">RETORNO</span>
+                            <span class="info-val">{row.get('Retorno', '-')}</span>
+                        </div>
+                        <div class="info-item bg-green">
+                            <span class="info-label">TIPO</span>
+                            <span class="info-val">{row.get('TIPO', '-')}</span>
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
-                
-                # BARRA SUPER FINA
-                val_suportes = '0'
-                for col in df.columns:
-                    if "total suportes" in col.lower():
-                        val_suportes = str(row.get(col, '0'))
-                        break
-                
-                st.markdown(f"""
-                <div class="info-row">
-                    <div class="info-item bg-purple">
-                        <span class="info-label">SUPORTES</span>
-                        <span class="info-val">📦 {val_suportes}</span>
-                    </div>
-                    <div class="info-item bg-orange">
-                        <span class="info-label">RETORNO</span>
-                        <span class="info-val">{row.get('Retorno', '-')}</span>
-                    </div>
-                    <div class="info-item bg-green">
-                        <span class="info-label">TIPO</span>
-                        <span class="info-val">{row.get('TIPO', '-')}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
 
-                # Carga
-                with st.expander("🔎 Ver Carga", expanded=False):
-                    cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
-                            "Frota Refrigerado", "Peixe", "Talho"]
-                    dd = {"Cat": [], "Qtd": []}
-                    for i in cols:
-                        col_match = next((c for c in df.columns if i.lower() in c.lower()), None)
-                        if col_match:
-                            v = str(row.get(col_match, '0'))
-                            if v != '0' and v.lower() != 'nan':
-                                dd["Cat"].append(i.replace("Azambuja ", "").replace("Total ", ""))
-                                dd["Qtd"].append(v)
-                                
-                    if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
-                    else: st.caption("Sem carga especial.")
-                
-                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
-                     st.info(f"📱 {row['WhatsApp']}")
+                    # Carga (chave única para o expander não travar o loop)
+                    with st.expander(f"🔎 Carga - Viagem {numero_rota}", expanded=False):
+                        cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
+                                "Frota Refrigerado", "Peixe", "Talho"]
+                        dd = {"Cat": [], "Qtd": []}
+                        for col_name in cols:
+                            col_match = next((c for c in df.columns if col_name.lower() in c.lower()), None)
+                            if col_match:
+                                v = str(row.get(col_match, '0'))
+                                if v != '0' and v.lower() != 'nan':
+                                    dd["Cat"].append(col_name.replace("Azambuja ", "").replace("Total ", ""))
+                                    dd["Qtd"].append(v)
+                                    
+                        if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
+                        else: st.caption("Sem carga especial.")
+                    
+                    if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                         st.info(f"📱 {row['WhatsApp']}")
+                         
             else: st.error("❌ VPN não encontrada.")
         else: st.warning("Digite a VPN.")
 else:
