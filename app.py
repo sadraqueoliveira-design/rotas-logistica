@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
-import pytz # Para o fuso horário
+import pytz 
 
 # --- 1. CONFIGURAÇÃO ---
 st.set_page_config(
@@ -11,33 +11,23 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- 2. DATA (Configurada para Portugal) ---
+# --- 2. DATA ---
 try:
     fuso = pytz.timezone('Europe/Lisbon')
     agora = datetime.now(fuso)
 except:
-    agora = datetime.now() # Se der erro, usa hora do servidor
+    agora = datetime.now()
 
 data_hoje = agora.strftime("%d/%m/%Y")
 dias = {0:"Segunda", 1:"Terça", 2:"Quarta", 3:"Quinta", 4:"Sexta", 5:"Sábado", 6:"Domingo"}
 dia_sem = dias[agora.weekday()]
 
-# --- 3. ESTILO (CSS SIMPLIFICADO) ---
-# Aqui estava o problema. Removi as margens negativas exageradas.
+# --- 3. ESTILO (CSS) ---
 st.markdown("""
 <style>
-    /* Esconde menu padrão */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu, footer, header {visibility: hidden;}
+    .block-container {padding-top: 1rem; padding-bottom: 0rem;}
     
-    /* Remove espaço extra do topo do Streamlit */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 0rem;
-    }
-    
-    /* BARRA AZUL (SIMPLES E SEGURA) */
     .header-box {
         background-color: #004aad;
         padding: 20px;
@@ -47,31 +37,24 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
+    .header-title { font-size: 24px; font-weight: bold; margin: 0; }
+    .header-date { font-size: 16px; opacity: 0.9; margin-top: 5px; }
     
-    /* Estilo do Texto */
-    .header-title {
-        font-size: 24px;
-        font-weight: bold;
-        margin: 0;
-    }
-    .header-date {
-        font-size: 16px;
-        opacity: 0.9;
-        margin-top: 5px;
-    }
-    
-    /* Inputs e Cartões */
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        padding: 10px;
+    /* Estilo para os blocos de horário ficarem mais cheios */
+    .time-block {
+        background-color: #f8f9fa;
+        padding: 15px;
         border-radius: 8px;
-        box-shadow: 1px 1px 3px rgba(0,0,0,0.05);
+        border-left: 5px solid #004aad;
+        margin-bottom: 10px;
     }
+    .time-label { font-size: 0.9rem; color: #666; font-weight: bold; text-transform: uppercase; }
+    .time-value { font-size: 1.8rem; font-weight: bold; color: #333; margin: 5px 0; }
+    .time-location { font-size: 1.1rem; color: #004aad; font-weight: bold; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. EXIBIR CABEÇALHO ---
+# --- 4. CABEÇALHO ---
 st.markdown(f"""
 <div class="header-box">
     <div style="font-size: 40px;">🚛</div>
@@ -80,7 +63,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE DADOS ---
+# --- 5. FUNÇÃO DE LEITURA ---
 def carregar_dados(uploaded_file):
     try:
         if uploaded_file.name.lower().endswith('xlsx'):
@@ -132,7 +115,6 @@ with st.sidebar:
 
 # --- 6. TELA MOTORISTA ---
 if df is not None:
-    # FORMULÁRIO DE BUSCA
     with st.form(key='busca'):
         st.markdown("**Digite sua VPN:**")
         vpn = st.text_input("vpn", label_visibility="collapsed", placeholder="Ex: 76628")
@@ -145,10 +127,9 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Nome
                 st.info(f"👤 **{row.get('Motorista', '-') }**")
                 
-                # Info Principal
+                # Info Geral
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
                 c2.metric("MÓVEL", str(row.get('Móvel', '-')))
@@ -157,14 +138,33 @@ if df is not None:
                 
                 st.markdown("---")
                 
-                # Horários
+                # --- HORÁRIOS COM LOCAIS (AQUI MUDOU) ---
+                # Pegamos o local de descarga para exibir junto da hora
+                local_descarga = row.get('Local descarga', 'Loja')
+                
                 cc, cd = st.columns(2)
-                cc.markdown(f"**🕒 Chegada**\n## {row.get('Hora chegada Azambuja', '--')}")
-                cd.markdown(f"**📦 Descarga**\n## {row.get('Hora descarga loja', '--')}")
                 
-                st.markdown("<br>", unsafe_allow_html=True)
+                with cc:
+                    # Bloco Chegada
+                    st.markdown(f"""
+                    <div class="time-block" style="border-left-color: #0d47a1;">
+                        <div class="time-label">CHEGADA</div>
+                        <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                        <div class="time-location">📍 Azambuja</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                # Etiquetas
+                with cd:
+                    # Bloco Descarga
+                    st.markdown(f"""
+                    <div class="time-block" style="border-left-color: #e65100;">
+                        <div class="time-label">DESCARGA</div>
+                        <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
+                        <div class="time-location">📍 {local_descarga}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Retorno e Tipo
                 cr, ct = st.columns(2)
                 cr.error(f"🔙 **Retorno:** {row.get('Retorno', '--')}")
                 ct.success(f"📋 **Tipo:** {row.get('TIPO', '-')}")
@@ -181,7 +181,6 @@ if df is not None:
                             dd["Qtd"].append(v)
                     if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
                     else: st.caption("Sem carga especial.")
-                    st.caption(f"📍 Local: {row.get('Local descarga', '-')}")
                 
                 if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
                      st.info(f"📱 Obs: {row['WhatsApp']}")
