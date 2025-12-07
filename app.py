@@ -51,30 +51,29 @@ st.markdown("""
     .time-label { font-size: 0.8rem; color: #666; font-weight: bold; text-transform: uppercase; }
     .time-value { font-size: 1.8rem; font-weight: bold; color: #333; margin: 5px 0; }
     
-    /* Local de Descarga em destaque */
     .location-highlight { 
         font-size: 1.2rem; 
-        color: #d32f2f; /* Vermelho/Laranja para destaque */
+        color: #d32f2f; 
         font-weight: 900; 
         text-transform: uppercase;
         margin-top: 5px;
     }
     
-    /* Etiquetas Pequenas (Suportes, Retorno, Tipo) */
+    /* MUDANÇA AQUI: Etiquetas Mais Compactas (Menores) */
     .tag-box {
-        padding: 8px;
-        border-radius: 6px;
+        padding: 5px; /* Menos enchimento */
+        border-radius: 5px;
         text-align: center;
         color: white;
         font-weight: bold;
         box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        font-size: 0.9rem;
-        height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        min-height: 50px; /* Altura fixa pequena */
     }
-    .tag-title { font-size: 0.7rem; opacity: 0.9; font-weight: normal; display: block; }
+    .tag-title { font-size: 0.65rem; opacity: 0.9; font-weight: normal; display: block; margin-bottom: 2px; text-transform: uppercase;}
+    .tag-value { font-size: 0.95rem; line-height: 1.1; } /* Letra do valor menor */
     
     div[data-testid="metric-container"] {
         background-color: #ffffff;
@@ -115,7 +114,7 @@ def carregar_dados(uploaded_file):
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
         
-        # Limpa nomes das colunas
+        # Limpeza
         df.columns = df.columns.astype(str).str.strip()
         
         df = df.loc[:, df.columns.notna()]
@@ -173,7 +172,7 @@ if df is not None:
                 
                 st.markdown("---")
                 
-                # --- HORÁRIOS & LOCAL ---
+                # Horários & Local
                 local_descarga = str(row.get('Local descarga', 'Loja')).upper()
                 
                 cc, cd = st.columns(2)
@@ -196,12 +195,10 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
                 
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                # --- ETIQUETAS PEQUENAS ---
+                # --- BLOCOS COMPACTOS (SUPORTES | RETORNO | TIPO) ---
                 k1, k2, k3 = st.columns(3)
                 
-                # 1. Suportes
+                # Suportes
                 val_suportes = '0'
                 for col in df.columns:
                     if "total suportes" in col.lower():
@@ -212,27 +209,29 @@ if df is not None:
                     st.markdown(f"""
                     <div class="tag-box" style="background-color: #7b1fa2;">
                         <span class="tag-title">SUPORTES</span>
-                        <span style="font-size: 1.1rem;">📦 {val_suportes}</span>
+                        <span class="tag-value">📦 {val_suportes}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # 2. Retorno
+                # Retorno
                 with k2:
                     st.markdown(f"""
                     <div class="tag-box" style="background-color: #f57c00;">
                         <span class="tag-title">RETORNO</span>
-                        <span style="font-size: 1.1rem;">🔙 {row.get('Retorno', '-')}</span>
+                        <span class="tag-value">🔙 {row.get('Retorno', '-')}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # 3. Tipo
+                # Tipo
                 with k3:
                     st.markdown(f"""
                     <div class="tag-box" style="background-color: #388e3c;">
                         <span class="tag-title">TIPO</span>
-                        <span style="font-size: 1.1rem;">📋 {row.get('TIPO', '-')}</span>
+                        <span class="tag-value">📋 {row.get('TIPO', '-')}</span>
                     </div>
                     """, unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
 
                 # Carga
                 with st.expander("🔎 Ver Detalhes da Carga", expanded=True):
