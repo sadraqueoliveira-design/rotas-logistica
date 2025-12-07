@@ -242,9 +242,10 @@ if df is not None:
                     
                     val_retorno = str(row.get('Retorno', '-'))
                     
-                    # MUDANÇA: Se tiver retorno, fica VERDE (#008000)
+                    # LÓGICA DE COR AJUSTADA:
+                    # Adicionei '○', 'o', 'O' à lista de ignorados para ficarem PRETO/CINZA.
                     cor_texto_retorno = "#333333" 
-                    if val_retorno not in ['0', '-', 'nan', 'Vazio', 'None']:
+                    if val_retorno not in ['0', '-', 'nan', 'Vazio', 'None', '○', 'o', 'O']:
                         cor_texto_retorno = "#008000" # VERDE
                     
                     st.markdown(f"""
