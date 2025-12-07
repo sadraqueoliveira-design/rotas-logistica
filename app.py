@@ -1,19 +1,18 @@
 import streamlit as st
 import pandas as pd
 
-# Configuração da página para parecer App Nativo
+# Configuração da página
 st.set_page_config(page_title="Minha Rota", page_icon="🚚", layout="centered")
 
-# --- CSS: ESTILO DE APLICATIVO ---
-# Isso remove margens extras, esconde menus e deixa botões grandes
+# --- CSS CORRIGIDO (PARA DESBLOQUEAR A DIGITAÇÃO) ---
 st.markdown("""
 <style>
-    /* Esconde o menu hamburger e rodapé do Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Remove o menu e rodapé completamente para não bloquear cliques */
+    #MainMenu {display: none;}
+    footer {display: none;}
+    header {display: none;}
     
-    /* Botão Grande e Verde */
+    /* Estilo do Botão */
     div.stButton > button {
         width: 100%;
         height: 3em;
@@ -27,21 +26,25 @@ st.markdown("""
         background-color: #0056b3;
     }
     
-    /* Input de Texto Grande */
+    /* CORREÇÃO DO CAMPO DE TEXTO */
+    /* Garante que o campo esteja clicável e visível */
+    div[data-testid="stTextInput"] {
+        z-index: 1000; /* Traz para frente */
+    }
     div[data-testid="stTextInput"] input {
         font-size: 20px;
         text-align: center;
-        height: 50px;
+        min-height: 50px;
     }
     
-    /* Cartões de Info */
+    /* Cartões */
     .metric-card {
         background-color: #f0f2f6;
         padding: 15px;
         border-radius: 10px;
         text-align: center;
         margin-bottom: 10px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        border: 1px solid #e6e6e6;
     }
     .big-text { font-size: 1.5rem; font-weight: bold; color: #1f2937; }
     .small-text { font-size: 0.9rem; color: #6b7280; }
@@ -59,7 +62,6 @@ def carregar_dados(uploaded_file):
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
 
-        # Busca cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -81,7 +83,6 @@ def carregar_dados(uploaded_file):
         return None
 
 # --- LÓGICA DE DADOS ---
-# Tenta ler arquivo local (padrão)
 df = None
 try:
     with open("teste tfs.xlsx", "rb") as f:
@@ -92,25 +93,25 @@ try:
 except:
     pass
 
-# --- ÁREA DE ADMIN (ESCONDIDA) ---
-# Só aparece se clicar na sidebar, útil para você atualizar o arquivo pelo celular
+# --- ÁREA DE ADMIN (MENU LATERAL) ---
 with st.sidebar:
-    st.header("🔧 Área do Gestor")
-    senha = st.text_input("Senha Admin", type="password")
-    if senha == "admin123": # <--- Mude sua senha aqui se quiser
-        upload = st.file_uploader("Atualizar Escala Hoje", type=['xlsx','csv'])
+    st.header("🔧 Gestor")
+    senha = st.text_input("Senha", type="password")
+    if senha == "admin123":
+        upload = st.file_uploader("Carregar Arquivo", type=['xlsx','csv'])
         if upload:
             df_up = carregar_dados(upload)
             if df_up is not None:
                 df = df_up
-                st.success("Escala Atualizada!")
+                st.success("Atualizado!")
 
-# --- TELA DO APP (MOTORISTA) ---
+# --- TELA DO APP ---
 st.markdown("<h2 style='text-align: center;'>🚚 Minha Escala</h2>", unsafe_allow_html=True)
 
 if df is not None:
-    st.write("") # Espaço
-    vpn_input = st.text_input("", placeholder="Digite sua VPN aqui", max_chars=10)
+    # Campo de VPN
+    st.write("") 
+    vpn_input = st.text_input("Sua VPN:", placeholder="Digite aqui...", max_chars=10, label_visibility="collapsed")
     
     if st.button("🔍 VER MINHA ROTA"):
         vpn_input = vpn_input.strip()
@@ -119,10 +120,9 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
-                # NOME
+                # Exibição
                 st.markdown(f"<div style='text-align:center; margin-bottom:15px; font-size:1.2rem;'>Olá, <b>{row.get('Motorista', 'Motorista')}</b></div>", unsafe_allow_html=True)
                 
-                # CARTÕES GRANDES (Mobile Friendly)
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"""
@@ -139,7 +139,6 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # HORÁRIOS EM DESTAQUE
                 st.markdown(f"""
                 <div class="metric-card" style="background-color: #e3f2fd; border: 1px solid #90caf9;">
                     <div class="small-text">CHEGADA AZAMBUJA</div>
@@ -151,12 +150,10 @@ if df is not None:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # INFORMAÇÃO RETORNO
                 if row.get('Retorno'):
                      st.error(f"⚠️ **RETORNO:** {row.get('Retorno')}")
 
-                # TABELA DE CARGA SIMPLIFICADA
-                with st.expander("📦 VER CARGA (Clique Aqui)", expanded=False):
+                with st.expander("📦 VER CARGA", expanded=False):
                     dados = {
                         "Item": ["Ambiente", "Congelados", "Peixe", "Talho", "Suportes"],
                         "Qtd": [
@@ -168,9 +165,11 @@ if df is not None:
                         ]
                     }
                     d_show = pd.DataFrame(dados)
-                    # Só mostra o que tem quantidade > 0
                     d_show = d_show[d_show['Qtd'].astype(str) != '0'] 
-                    st.table(d_show.set_index('Item'))
+                    if not d_show.empty:
+                        st.table(d_show.set_index('Item'))
+                    else:
+                        st.info("Sem dados de carga.")
                     
                     st.caption(f"Local: {row.get('Local descarga','-')}")
 
