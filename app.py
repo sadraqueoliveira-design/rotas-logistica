@@ -94,7 +94,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 5. FUNÇÃO DE LEITURA (Ultra Robusta) ---
+# --- 5. FUNÇÃO DE LEITURA ---
 def carregar_dados(uploaded_file):
     try:
         if uploaded_file.name.lower().endswith('xlsx'):
@@ -115,8 +115,7 @@ def carregar_dados(uploaded_file):
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
         
-        # LIMPEZA PROFUNDA DOS NOMES DAS COLUNAS
-        # Remove espaços antes/depois e converte para garantir match
+        # Limpa nomes das colunas
         df.columns = df.columns.astype(str).str.strip()
         
         df = df.loc[:, df.columns.notna()]
@@ -126,7 +125,7 @@ def carregar_dados(uploaded_file):
         return None
     except: return None
 
-# Carrega arquivo
+# Carrega arquivo local
 df = None
 nome = "rotas.csv.xlsx"
 if os.path.exists(nome):
@@ -174,12 +173,11 @@ if df is not None:
                 
                 st.markdown("---")
                 
-                # --- HORÁRIOS & LOCAL (AQUI ESTÁ A MUDANÇA) ---
-                local_descarga = str(row.get('Local descarga', 'Loja')).upper() # Tudo maiúsculo para destaque
+                # --- HORÁRIOS & LOCAL ---
+                local_descarga = str(row.get('Local descarga', 'Loja')).upper()
                 
                 cc, cd = st.columns(2)
                 
-                # Bloco Esquerdo: Azambuja
                 with cc:
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #0d47a1;">
@@ -189,7 +187,6 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Bloco Direito: Descarga (COM NOME GRANDE)
                 with cd:
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #d32f2f;">
@@ -201,11 +198,10 @@ if df is not None:
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # --- ETIQUETAS PEQUENAS (3 Colunas) ---
+                # --- ETIQUETAS PEQUENAS ---
                 k1, k2, k3 = st.columns(3)
                 
-                # 1. Suportes (Cor Roxa, Pequeno)
-                # Tenta buscar coluna com variações de nome
+                # 1. Suportes
                 val_suportes = '0'
                 for col in df.columns:
                     if "total suportes" in col.lower():
@@ -220,7 +216,7 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # 2. Retorno (Laranja)
+                # 2. Retorno
                 with k2:
                     st.markdown(f"""
                     <div class="tag-box" style="background-color: #f57c00;">
@@ -229,7 +225,7 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
 
-                # 3. Tipo (Verde)
+                # 3. Tipo
                 with k3:
                     st.markdown(f"""
                     <div class="tag-box" style="background-color: #388e3c;">
@@ -240,7 +236,23 @@ if df is not None:
 
                 # Carga
                 with st.expander("🔎 Ver Detalhes da Carga", expanded=True):
-                    # Removemos 'Total Suportes' da lista pois já está no topo
                     cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
                             "Frota Refrigerado", "Peixe", "Talho"]
-                    dd = {"Cat": [], "
+                    dd = {"Cat": [], "Qtd": []}
+                    for i in cols:
+                        col_match = next((c for c in df.columns if i.lower() in c.lower()), None)
+                        if col_match:
+                            v = str(row.get(col_match, '0'))
+                            if v != '0' and v.lower() != 'nan':
+                                dd["Cat"].append(i.replace("Azambuja ", "").replace("Total ", ""))
+                                dd["Qtd"].append(v)
+                                
+                    if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
+                    else: st.caption("Sem carga especial.")
+                
+                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                     st.info(f"📱 Obs: {row['WhatsApp']}")
+            else: st.error("❌ VPN não encontrada.")
+        else: st.warning("Digite a VPN.")
+else:
+    st.warning("⚠️ Aguardando arquivo.")
