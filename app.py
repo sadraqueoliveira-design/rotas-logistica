@@ -3,7 +3,6 @@ import pandas as pd
 import os
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-# (Trocamos o ícone da aba também para um caminhão mais bonito)
 st.set_page_config(page_title="App Rotas", page_icon="https://img.icons8.com/ios-filled/50/4a90e2/truck.png", layout="centered")
 
 # --- ESTILO VISUAL (CSS) ---
@@ -63,7 +62,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- BARRA DE TÍTULO COM IMAGEM ---
-# Usei um link público de um ícone de camião branco.
 st.markdown("""
 <div class="app-header">
     <img src="https://img.icons8.com/ios-filled/100/ffffff/truck.png" alt="Camião">
@@ -75,10 +73,44 @@ st.markdown("""
 # --- 1. FUNÇÃO DE LEITURA ---
 def carregar_dados(uploaded_file):
     try:
+        # Verifica extensão
         if uploaded_file.name.lower().endswith('xlsx'):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
+            # Tenta CSV com ponto e vírgula
             try:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except:
-                df_raw = pd.read_csv(uploaded
+                # Tenta CSV com vírgula (fallback)
+                df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
+
+        # Procura a linha de cabeçalho
+        header_idx = -1
+        for index, row in df_raw.iterrows():
+            linha_txt = row.astype(str).str.cat(sep=' ').lower()
+            if "motorista" in linha_txt and "vpn" in linha_txt:
+                header_idx = index
+                break
+        
+        if header_idx == -1: return None
+        
+        # Ajusta o DataFrame
+        df_raw.columns = df_raw.iloc[header_idx] 
+        df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
+        df = df.loc[:, df.columns.notna()]
+        
+        # Limpeza da VPN
+        if 'VPN' in df.columns:
+            df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            return df
+        return None
+    except:
+        return None
+
+# --- 2. CARREGAR ARQUIVO AUTOMÁTICO ---
+df = None
+nome_arquivo_oficial = "rotas.csv.xlsx"
+
+try:
+    if os.path.exists(nome_arquivo_oficial):
+        with open(nome_arquivo_oficial,
