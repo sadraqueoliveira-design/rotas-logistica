@@ -8,7 +8,7 @@ import pytz
 st.set_page_config(page_title="Logística App", page_icon="🚛", layout="centered")
 
 # ==========================================
-# 🔐 LISTA DE ADMINISTRADORES
+# 🔐 ADMINS
 # ==========================================
 ADMINS = {
     "Admin Principal": "admin123",
@@ -16,79 +16,96 @@ ADMINS = {
     "Escritório": "office99",
 }
 
-# --- 2. ESTILO CSS (VISUAL AJUSTADO) ---
+# --- 2. ESTILO CSS (VISUAL APP PREMIUM) ---
 st.markdown("""
 <style>
-    /* Oculta rodapé e menu padrão */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    .block-container {padding-top: 1rem; padding-bottom: 3rem;}
+    #MainMenu, footer, header {visibility: hidden;}
+    .block-container {padding-top: 0.5rem; padding-bottom: 2rem;}
     
     /* Menu Lateral */
-    section[data-testid="stSidebar"] { background-color: #f0f2f6; }
+    section[data-testid="stSidebar"] { background-color: #f8f9fa; }
     
-    /* --- CABEÇALHO CORRIGIDO (DATA MAIOR) --- */
+    /* CABEÇALHO */
     .header-box {
-        background-color: #004aad;
-        padding: 15px; /* Mais espaço interno */
+        background: linear-gradient(90deg, #004aad 0%, #0066cc 100%);
+        padding: 12px;
         border-radius: 8px;
         text-align: center;
         color: white;
-        margin-bottom: 15px;
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        gap: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: flex; align-items: center; justify-content: center; gap: 10px;
     }
-    .header-title { 
-        font-size: 22px; /* Título Maior */
-        font-weight: bold; 
-        margin: 0; 
-        line-height: 1.2; 
-    }
-    .header-date { 
-        font-size: 16px; /* DATA BEM VISÍVEL */
-        font-weight: normal; 
-        opacity: 0.9; 
-        margin: 0; 
-        color: #e3f2fd; /* Azul clarinho para destacar */
-    }
+    .header-title { font-size: 18px; font-weight: bold; margin: 0; line-height: 1; }
+    .header-date { font-size: 12px; opacity: 0.9; margin: 0; font-weight: normal; }
     
-    /* Rotas: Blocos de Horário */
+    /* CARTÃO MOTORISTA */
+    .driver-card {
+        background-color: white;
+        border-left: 5px solid #004aad;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 8px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .driver-icon { font-size: 20px; }
+    .driver-name { font-size: 16px; font-weight: bold; color: #333; }
+    
+    /* GRELHA VEÍCULO (2x2) - O SEGREDO DO ESPAÇO */
+    .vehicle-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+    .vehicle-item {
+        background-color: #e3f2fd;
+        padding: 5px;
+        border-radius: 5px;
+        text-align: center;
+    }
+    .vehicle-label { font-size: 10px; color: #666; text-transform: uppercase; font-weight: bold; }
+    .vehicle-val { font-size: 14px; font-weight: bold; color: #004aad; }
+    
+    /* BLOCOS DE HORÁRIO */
+    .time-container {
+        display: flex; gap: 5px; margin-bottom: 8px;
+    }
     .time-block {
-        background-color: #f8f9fa; padding: 5px; border-radius: 5px;
-        border-left: 3px solid #004aad; margin-bottom: 5px;
+        flex: 1;
+        background-color: #f8f9fa;
+        padding: 8px;
+        border-radius: 6px;
+        border-left: 4px solid #333;
+        text-align: left;
     }
-    .time-label { font-size: 0.6rem; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
-    .time-value { font-size: 1.1rem; font-weight: bold; color: #333; margin: 0; line-height: 1.1; }
+    .time-label { font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; margin: 0; }
+    .time-value { font-size: 20px; font-weight: bold; color: #333; margin: 2px 0; line-height: 1; }
+    .location-text { font-size: 12px; font-weight: 900; text-transform: uppercase; margin: 0; }
     
-    /* Locais em Destaque */
-    .location-highlight { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; margin: 0;}
-    .text-blue { color: #0d47a1; } .text-red { color: #d32f2f; }
+    /* BARRA FINA (STATUS) */
+    .info-row { display: flex; justify-content: space-between; gap: 4px; margin-bottom: 8px; }
+    .info-item { flex: 1; text-align: center; padding: 4px; border-radius: 4px; color: white; display: flex; flex-direction: column; justify-content: center; }
+    .info-item-retorno { flex: 1; text-align: center; padding: 4px; border-radius: 4px; background-color: white; border: 1px solid #ddd; display: flex; flex-direction: column; justify-content: center; }
     
-    /* Barra Fina */
-    .info-row { display: flex; justify-content: space-between; gap: 4px; margin-top: 5px; margin-bottom: 5px; }
-    .info-item { flex: 1; text-align: center; padding: 3px 2px; border-radius: 4px; color: white; }
-    .info-item-retorno { flex: 1; text-align: center; padding: 2px 2px; border-radius: 4px; background-color: white; border: 1px solid #ddd; }
-    .info-label { font-size: 0.5rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 0px; line-height: 1;}
-    .info-label-dark { font-size: 0.5rem; text-transform: uppercase; color: #666; display: block; margin-bottom: 0px; line-height: 1; font-weight: bold;}
-    .info-val { font-size: 0.9rem; font-weight: bold; line-height: 1.1; }
+    .info-label { font-size: 9px; text-transform: uppercase; opacity: 0.9; line-height: 1; margin-bottom: 2px; }
+    .info-label-dark { font-size: 9px; text-transform: uppercase; color: #666; line-height: 1; margin-bottom: 2px; font-weight: bold; }
+    .info-val { font-size: 14px; font-weight: bold; line-height: 1; }
     
-    .bg-purple { background-color: #7b1fa2; } .bg-green { background-color: #388e3c; }
-
-    /* Separador Rotas */
+    .bg-purple { background-color: #7b1fa2; } 
+    .bg-green { background-color: #2e7d32; }
+    
+    /* Separador */
     .rota-separator { text-align: center; margin: 15px 0 5px 0; font-size: 0.8rem; font-weight: bold; color: #004aad; background-color: #e3f2fd; padding: 4px; border-radius: 4px; }
-
-    div[data-testid="metric-container"] { padding: 4px; margin: 0px; }
-    div[data-testid="metric-container"] label { font-size: 0.6rem; margin-bottom: 0px; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 0.9rem; }
+    
+    /* Ajustes Gerais */
     div[data-testid="stTextInput"] { margin-bottom: 0px; }
+    button[kind="primary"] { width: 100%; border-radius: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÃO DE LEITURA ---
+# --- 3. FUNÇÕES ---
 def ler_rotas(uploaded_file):
     try:
         if uploaded_file.name.lower().endswith('xlsx'): df_raw = pd.read_excel(uploaded_file, header=None)
@@ -126,21 +143,15 @@ with st.sidebar:
 # PÁGINA 1: MINHA ESCALA
 # ==================================================
 if menu == "🚛 Minha Escala":
-    # Data
     try: fuso = pytz.timezone('Europe/Lisbon'); agora = datetime.now(fuso)
     except: agora = datetime.now()
-    data_hoje = agora.strftime("%d/%m")
-    dias = {0:"Domingo", 1:"Segunda", 2:"Terça", 3:"Quarta", 4:"Quinta", 5:"Sexta", 6:"Sábado"}
+    data_hoje = agora.strftime("%d/%m"); dias = {0:"Seg", 1:"Ter", 2:"Qua", 3:"Qui", 4:"Sex", 5:"Sáb", 6:"Dom"}
     dia_sem = dias[agora.weekday()]
 
-    # CABEÇALHO (AGORA COM LETRA GRANDE)
     st.markdown(f"""
     <div class="header-box">
-        <div style="font-size: 30px;">🚛</div>
-        <div>
-            <div class="header-title">Minha Escala</div>
-            <div class="header-date">📅 {dia_sem}, {data_hoje}</div>
-        </div>
+        <div style="font-size: 24px;">🚛</div>
+        <div><div class="header-title">Minha Escala</div><div class="header-date">{dia_sem}, {data_hoje}</div></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -156,39 +167,59 @@ if menu == "🚛 Minha Escala":
                 for i, (idx, row) in enumerate(res.iterrows()):
                     if total > 1: st.markdown(f"<div class='rota-separator'>📍 VIAGEM {i+1} de {total}</div>", unsafe_allow_html=True)
                     
-                    # Motorista (Azul destaque)
-                    st.markdown(f"""<div style='background-color: #004aad; color: white; padding: 6px; border-radius: 6px; text-align: center; font-weight: bold; font-size: 1.0rem; margin-bottom: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);'>👤 {row.get('Motorista', '-')}</div>""", unsafe_allow_html=True)
+                    # 1. MOTORISTA (Cartão Limpo)
+                    st.markdown(f"""
+                    <div class="driver-card">
+                        <div class="driver-icon">👤</div>
+                        <div class="driver-name">{row.get('Motorista', '-')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Veículo
-                    c1, c2, c3, c4 = st.columns(4)
-                    c1.metric("MATR", str(row.get('Matrícula', '-')))
-                    c2.metric("MÓVEL", str(row.get('Móvel', '-')))
-                    c3.metric("ROTA", str(row.get('ROTA', '-')))
-                    c4.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                    # 2. GRELHA VEÍCULO (2x2 - MUITO MELHOR NO TELEMÓVEL)
+                    st.markdown(f"""
+                    <div class="vehicle-grid">
+                        <div class="vehicle-item"><div class="vehicle-label">MATRÍCULA</div><div class="vehicle-val">{row.get('Matrícula', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">TELEMÓVEL</div><div class="vehicle-val">{row.get('Móvel', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">ROTA</div><div class="vehicle-val">{row.get('ROTA', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">LOJA</div><div class="vehicle-val">{row.get('Nº LOJA', '-')}</div></div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Horários
+                    # 3. HORÁRIOS
                     loc_desc = str(row.get('Local descarga', 'Loja')).upper()
-                    cc, cd = st.columns(2)
-                    with cc: st.markdown(f"""<div class="time-block" style="border-left-color: #0d47a1;"><div class="time-label">CHEGADA</div><div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div><div class="location-highlight text-blue">AZAMBUJA</div></div>""", unsafe_allow_html=True)
-                    with cd: st.markdown(f"""<div class="time-block" style="border-left-color: #d32f2f;"><div class="time-label">DESCARGA</div><div class="time-value">{row.get('Hora descarga loja', '--')}</div><div class="location-highlight text-red">{loc_desc}</div></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="time-container">
+                        <div class="time-block" style="border-left-color: #004aad;">
+                            <div class="time-label">CHEGADA</div>
+                            <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                            <div class="location-text" style="color: #004aad;">AZAMBUJA</div>
+                        </div>
+                        <div class="time-block" style="border-left-color: #d32f2f;">
+                            <div class="time-label">DESCARGA</div>
+                            <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
+                            <div class="location-text" style="color: #d32f2f;">{loc_desc}</div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
-                    # Barra Fina (Lógica de Cores)
+                    # 4. BARRA FINA DE STATUS
                     v_sup = '0'
                     for c in df_rotas.columns: 
                         if "total suportes" in c.lower(): v_sup = str(row.get(c, '0')); break
                     
                     v_ret = str(row.get('Retorno', '-'))
-                    cor_ret = "#008000" if v_ret not in ['0','-','nan','Vazio','None','○','o','O'] else "#333"
+                    cor_ret = "#2e7d32" if v_ret not in ['0','-','nan','Vazio','None','○','o','O'] else "#999"
+                    weight_ret = "bold" if cor_ret == "#2e7d32" else "normal"
                     
                     st.markdown(f"""
                     <div class="info-row">
                         <div class="info-item bg-purple"><span class="info-label">SUPORTES</span><span class="info-val">📦 {v_sup}</span></div>
-                        <div class="info-item-retorno"><span class="info-label-dark">RETORNO</span><span class="info-val" style="color:{cor_ret}">{v_ret}</span></div>
+                        <div class="info-item-retorno"><span class="info-label-dark">RETORNO</span><span class="info-val" style="color:{cor_ret}; font-weight:{weight_ret}">{v_ret}</span></div>
                         <div class="info-item bg-green"><span class="info-label">TIPO</span><span class="info-val">{row.get('TIPO', '-')}</span></div>
                     </div>""", unsafe_allow_html=True)
                     
-                    # Carga
-                    with st.expander(f"🔎 Carga Viagem {i+1}"):
+                    # 5. CARGA
+                    with st.expander(f"🔎 Ver Carga Detalhada"):
                         cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", "Frota Refrigerado", "Peixe", "Talho"]
                         dd = {"Cat": [], "Qtd": []}
                         for cn in cols:
@@ -197,7 +228,7 @@ if menu == "🚛 Minha Escala":
                                 v = str(row.get(match, '0'))
                                 if v not in ['0', 'nan']: dd["Cat"].append(cn.replace("Azambuja ","").replace("Total ","")); dd["Qtd"].append(v)
                         if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
-                        else: st.caption("Vazio")
+                        else: st.caption("Nenhuma carga específica registada.")
                         
                     if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
                          st.info(f"📱 {row['WhatsApp']}")
@@ -205,29 +236,19 @@ if menu == "🚛 Minha Escala":
     else: st.warning("⚠️ Aguardando escala.")
 
 # ==================================================
-# PÁGINA 2: GESTÃO (MULTI ADMIN)
+# PÁGINA 2: GESTÃO
 # ==================================================
 elif menu == "⚙️ Gestão":
     st.header("🔐 Acesso Restrito")
-    
-    # Login Multi-Usuário
-    usuario = st.selectbox("Selecione seu Usuário", ["Selecionar..."] + list(ADMINS.keys()))
-    senha = st.text_input("Digite sua Senha", type="password")
+    usuario = st.selectbox("Usuário", ["Selecionar..."] + list(ADMINS.keys()))
+    senha = st.text_input("Senha", type="password")
     
     if usuario != "Selecionar..." and senha == ADMINS.get(usuario):
         st.success(f"Bem-vindo, {usuario}!")
         st.markdown("---")
-        
-        st.subheader("Atualizar Arquivo de Rotas")
-        up_rotas = st.file_uploader("Selecione o arquivo Excel ou CSV", type=['xlsx','csv'])
-        
+        up_rotas = st.file_uploader("Arquivo Rotas (Excel/CSV)", type=['xlsx','csv'])
         if up_rotas:
             df_novo = ler_rotas(up_rotas)
-            if df_novo is not None: 
-                df_rotas = df_novo
-                st.success("✅ Rotas atualizadas com sucesso!")
-            else:
-                st.error("Erro ao ler arquivo.")
-                
-    elif senha:
-        st.error("Senha incorreta!")
+            if df_novo is not None: df_rotas = df_novo; st.success("✅ Atualizado!")
+            else: st.error("Erro no arquivo.")
+    elif senha: st.error("Senha incorreta!")
