@@ -14,13 +14,12 @@ ADMINS = {
     "Admin Principal": "admin123",
     "Gestor Tráfego": "trafego2025",
     "Escritório": "office99",
-    # Adicione mais aqui se precisar
 }
 
-# --- 2. ESTILO CSS (Compacto e Otimizado) ---
+# --- 2. ESTILO CSS (VISUAL AJUSTADO) ---
 st.markdown("""
 <style>
-    /* Oculta rodapé e menu de 3 pontos, mas DEIXA o cabeçalho visível para o menu lateral */
+    /* Oculta rodapé e menu padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
@@ -29,18 +28,33 @@ st.markdown("""
     /* Menu Lateral */
     section[data-testid="stSidebar"] { background-color: #f0f2f6; }
     
-    /* Cabeçalho */
+    /* --- CABEÇALHO CORRIGIDO (DATA MAIOR) --- */
     .header-box {
         background-color: #004aad;
-        padding: 8px;
-        border-radius: 6px;
+        padding: 15px; /* Mais espaço interno */
+        border-radius: 8px;
         text-align: center;
         color: white;
-        margin-bottom: 5px;
-        display: flex; align-items: center; justify-content: center; gap: 8px;
+        margin-bottom: 15px;
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .header-title { font-size: 16px; font-weight: bold; margin: 0; line-height: 1; }
-    .header-date { font-size: 11px; opacity: 0.9; margin: 0; }
+    .header-title { 
+        font-size: 22px; /* Título Maior */
+        font-weight: bold; 
+        margin: 0; 
+        line-height: 1.2; 
+    }
+    .header-date { 
+        font-size: 16px; /* DATA BEM VISÍVEL */
+        font-weight: normal; 
+        opacity: 0.9; 
+        margin: 0; 
+        color: #e3f2fd; /* Azul clarinho para destacar */
+    }
     
     /* Rotas: Blocos de Horário */
     .time-block {
@@ -115,13 +129,18 @@ if menu == "🚛 Minha Escala":
     # Data
     try: fuso = pytz.timezone('Europe/Lisbon'); agora = datetime.now(fuso)
     except: agora = datetime.now()
-    data_hoje = agora.strftime("%d/%m"); dias = {0:"Seg", 1:"Ter", 2:"Qua", 3:"Qui", 4:"Sex", 5:"Sáb", 6:"Dom"}
+    data_hoje = agora.strftime("%d/%m")
+    dias = {0:"Domingo", 1:"Segunda", 2:"Terça", 3:"Quarta", 4:"Quinta", 5:"Sexta", 6:"Sábado"}
     dia_sem = dias[agora.weekday()]
 
+    # CABEÇALHO (AGORA COM LETRA GRANDE)
     st.markdown(f"""
     <div class="header-box">
-        <div style="font-size: 20px;">🚛</div>
-        <div><div class="header-title">Minha Escala</div><div class="header-date">{dia_sem}, {data_hoje}</div></div>
+        <div style="font-size: 30px;">🚛</div>
+        <div>
+            <div class="header-title">Minha Escala</div>
+            <div class="header-date">📅 {dia_sem}, {data_hoje}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -159,7 +178,6 @@ if menu == "🚛 Minha Escala":
                         if "total suportes" in c.lower(): v_sup = str(row.get(c, '0')); break
                     
                     v_ret = str(row.get('Retorno', '-'))
-                    # Ignora zeros e simbolos vazios para a cor verde
                     cor_ret = "#008000" if v_ret not in ['0','-','nan','Vazio','None','○','o','O'] else "#333"
                     
                     st.markdown(f"""
