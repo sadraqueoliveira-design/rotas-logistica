@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from datetime import datetime
 import pytz 
-import re # Biblioteca para procurar padrões de texto (Expressões Regulares)
+import re 
 
 # --- 1. CONFIGURAÇÃO ---
 st.set_page_config(page_title="Logística App", page_icon="🚛", layout="centered")
@@ -70,28 +70,17 @@ st.markdown("""
 
 # --- 3. FUNÇÕES INTELIGENTES ---
 
-# Função Detetive: Procura a data dentro do Excel
 def extrair_data_do_arquivo(df_raw):
-    # Procura apenas nas primeiras 10 linhas para ser rápido
     linhas_para_verificar = 10
-    
-    # Tenta percorrer as linhas
     for i in range(min(len(df_raw), linhas_para_verificar)):
         linha = df_raw.iloc[i].astype(str).values
         texto_linha = " ".join(linha)
-        
-        # 1. Procura por formato de data dd/mm/aaaa
         match = re.search(r'(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})', texto_linha)
         if match:
             dia, mes, ano = match.groups()
-            if len(ano) == 2: ano = "20" + ano # Corrige ano de 2 dígitos
-            try:
-                # Retorna objeto data real encontrado
-                return datetime(int(ano), int(mes), int(dia))
-            except:
-                continue # Se a data for inválida (ex: 30/02), continua procurando
-                
-    # Se não encontrar nada, retorna None
+            if len(ano) == 2: ano = "20" + ano
+            try: return datetime(int(ano), int(mes), int(dia))
+            except: continue
     return None
 
 def ler_rotas(uploaded_file):
@@ -102,10 +91,8 @@ def ler_rotas(uploaded_file):
             try: df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except: df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
             
-        # Tenta descobrir a data ANTES de limpar o cabeçalho
         data_encontrada = extrair_data_do_arquivo(df_raw)
         
-        # Procura a linha de cabeçalho correta
         header_idx = -1
         for index, row in df_raw.iterrows():
             txt = row.astype(str).str.cat(sep=' ').lower()
@@ -114,7 +101,6 @@ def ler_rotas(uploaded_file):
         
         if header_idx == -1: return None, None
         
-        # Arruma o DataFrame
         df_raw.columns = df_raw.iloc[header_idx]
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
         df.columns = df.columns.astype(str).str.strip()
@@ -132,17 +118,14 @@ if os.path.exists("rotas.csv.xlsx"):
     with open("rotas.csv.xlsx", "rb") as f:
         from io import BytesIO
         mem = BytesIO(f.read()); mem.name = "rotas.csv.xlsx"
-        # Agora a função retorna DOIS valores: a tabela e a data encontrada
         df_rotas, data_encontrada = ler_rotas(mem)
         
-        # Se achou data no arquivo, usa ela. Senão, usa hoje.
         if data_encontrada:
             agora = data_encontrada
         else:
             try: fuso = pytz.timezone('Europe/Lisbon'); agora = datetime.now(fuso)
             except: agora = datetime.now()
 
-# Formata a data para exibir
 data_hoje = agora.strftime("%d/%m")
 dias = {0:"Seg", 1:"Ter", 2:"Qua", 3:"Qui", 4:"Sex", 5:"Sáb", 6:"Dom"}
 dia_sem = dias[agora.weekday()]
@@ -190,4 +173,76 @@ if menu == "🚛 Minha Escala":
                     # Horários
                     loc_desc = str(row.get('Local descarga', 'Loja')).upper()
                     cc, cd = st.columns(2)
+                    
                     with cc:
+                        st.markdown(f"""
+                        <div class="time-block" style="border-left-color: #0d47a1;">
+                            <div class="time-label">CHEGADA</div>
+                            <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
+                            <div class="location-highlight text-blue">AZAMBUJA</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with cd:
+                        st.markdown(f"""
+                        <div class="time-block" style="border-left-color: #d32f2f;">
+                            <div class="time-label">DESCARGA</div>
+                            <div class="time-value">{row.get('Hora descarga loja', '--')}</div>
+                            <div class="location-highlight text-red">{loc_desc}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Barra Fina
+                    v_sup = '0'
+                    for c in df_rotas.columns: 
+                        if "total suportes" in c.lower(): v_sup = str(row.get(c, '0')); break
+                    
+                    v_ret = str(row.get('Retorno', '-'))
+                    cor_ret = "#008000" if v_ret not in ['0','-','nan','Vazio','None','○','o','O'] else "#333"
+                    
+                    st.markdown(f"""
+                    <div class="info-row">
+                        <div class="info-item bg-purple"><span class="info-label">SUPORTES</span><span class="info-val">📦 {v_sup}</span></div>
+                        <div class="info-item-retorno"><span class="info-label-dark">RETORNO</span><span class="info-val" style="color:{cor_ret}">{v_ret}</span></div>
+                        <div class="info-item bg-green"><span class="info-label">TIPO</span><span class="info-val">{row.get('TIPO', '-')}</span></div>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    # Carga
+                    with st.expander(f"🔎 Carga Viagem {i+1}"):
+                        cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", "Frota Refrigerado", "Peixe", "Talho"]
+                        dd = {"Cat": [], "Qtd": []}
+                        for cn in cols:
+                            match = next((c for c in df_rotas.columns if cn.lower() in c.lower()), None)
+                            if match:
+                                v = str(row.get(match, '0'))
+                                if v not in ['0', 'nan']: dd["Cat"].append(cn.replace("Azambuja ","").replace("Total ","")); dd["Qtd"].append(v)
+                        if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
+                        else: st.caption("Vazio")
+                        
+                    if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                         st.info(f"📱 {row['WhatsApp']}")
+            else: st.error("❌ VPN não encontrada.")
+    else: st.warning("⚠️ Aguardando escala.")
+
+# ==================================================
+# PÁGINA 2: GESTÃO (MULTI ADMIN)
+# ==================================================
+elif menu == "⚙️ Gestão":
+    st.header("🔐 Acesso Restrito")
+    usuario = st.selectbox("Usuário", ["Selecionar..."] + list(ADMINS.keys()))
+    senha = st.text_input("Senha", type="password")
+    
+    if usuario != "Selecionar..." and senha == ADMINS.get(usuario):
+        st.success(f"Bem-vindo, {usuario}!")
+        st.markdown("---")
+        up_rotas = st.file_uploader("Arquivo Rotas", type=['xlsx','csv'])
+        if up_rotas:
+            df_novo, data_detectada = ler_rotas(up_rotas)
+            if df_novo is not None: 
+                df_rotas = df_novo
+                msg = "✅ Rotas atualizadas!"
+                if data_detectada:
+                    msg += f" (Data detectada: {data_detectada.strftime('%d/%m')})"
+                st.success(msg)
+            else: st.error("Erro ao ler arquivo.")
+    elif senha: st.error("Senha incorreta!")
