@@ -1,50 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-# Configuração básica
-st.set_page_config(page_title="Minha Rota", page_icon="🚚", layout="centered")
+# Configuração simples (sem layouts complexos)
+st.set_page_config(page_title="Rotas Logística", page_icon="🚚")
 
-# --- CSS LIMPO (Apenas para esconder o menu e aumentar o botão) ---
-# Removi qualquer código que mexa na caixa de texto (Input) para evitar bloqueios
-st.markdown("""
-<style>
-    /* Esconde menu e rodapé */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Aumenta apenas o Botão para ficar fácil de clicar */
-    div.stButton > button {
-        width: 100%;
-        height: 3em;
-        font-size: 18px;
-        background-color: #007bff;
-        color: white;
-        border-radius: 8px;
-        border: none;
-    }
-    div.stButton > button:hover {
-        background-color: #0056b3;
-    }
-    
-    /* Estilo dos Cartões de Informação */
-    .metric-card {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        margin-bottom: 10px;
-        border: 1px solid #ddd;
-    }
-    .big-text { font-size: 1.4rem; font-weight: bold; color: #333; }
-    .small-text { font-size: 0.9rem; color: #666; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- FUNÇÃO DE LEITURA ---
+# --- 1. FUNÇÃO DE CARREGAMENTO (MANTIDA IGUAL) ---
 def carregar_dados(uploaded_file):
     try:
-        # Tenta ler Excel ou CSV
         if uploaded_file.name.lower().endswith(('.xlsx', '.xls')):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
@@ -53,7 +15,6 @@ def carregar_dados(uploaded_file):
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
 
-        # Busca cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -74,7 +35,7 @@ def carregar_dados(uploaded_file):
     except:
         return None
 
-# --- CARREGAR ARQUIVO (Memória ou Upload) ---
+# --- 2. CARREGAR ARQUIVO ---
 df = None
 try:
     with open("teste tfs.xlsx", "rb") as f:
@@ -85,81 +46,76 @@ try:
 except:
     pass
 
-# --- MENU ADMIN (LATERAL) ---
+# --- 3. BARRA LATERAL (ADMIN) ---
+# Usamos a sidebar padrão do Streamlit. Funciona sempre.
 with st.sidebar:
-    st.header("🔧 Admin")
-    senha = st.text_input("Senha", type="password")
+    st.header("Área do Gestor")
+    senha = st.text_input("Senha Admin", type="password")
     if senha == "admin123":
-        st.success("Logado")
-        upload = st.file_uploader("Carregar Escala", type=['xlsx','csv'])
+        st.success("Acesso Liberado")
+        upload = st.file_uploader("Atualizar Escala", type=['xlsx','csv'])
         if upload:
             df_up = carregar_dados(upload)
             if df_up is not None:
                 df = df_up
-                st.success("✅ Atualizado!")
+                st.success("Escala Atualizada!")
 
-# --- TELA PRINCIPAL ---
-st.markdown("<h2 style='text-align: center;'>🚚 Minha Escala</h2>", unsafe_allow_html=True)
+# --- 4. TELA PRINCIPAL (MOTORISTA) ---
+st.title("🚚 Consulta de Rotas")
 
 if df is not None:
-    st.write("Digite sua VPN abaixo:")
+    st.info("Digite sua VPN abaixo para ver a escala.")
     
-    # Campo simples, sem estilo customizado, para garantir funcionamento
-    vpn_input = st.text_input("VPN", label_visibility="collapsed", placeholder="Ex: 76628")
-    
-    # Botão de busca
-    if st.button("🔍 BUSCAR ROTA"):
+    # --- MUDANÇA IMPORTANTE: FORMULÁRIO ---
+    # Usar st.form ajuda muito no celular, pois evita recarregar a página enquanto digita
+    with st.form(key='busca_rota'):
+        # Input padrão, sem truques de esconder label
+        vpn_input = st.text_input("Número da VPN:")
+        submit_button = st.form_submit_button(label='🔍 BUSCAR AGORA')
+
+    if submit_button:
         vpn_input = vpn_input.strip()
         if vpn_input:
             res = df[df['VPN'] == vpn_input]
             if not res.empty:
                 row = res.iloc[0]
                 
-                # Exibição dos dados
-                st.markdown(f"<div style='text-align:center; margin-bottom:10px; font-size:1.2rem;'>Olá, <b>{row.get('Motorista', 'Motorista')}</b></div>", unsafe_allow_html=True)
+                st.success(f"Motorista: {row.get('Motorista', 'Motorista')}")
                 
+                # Usando métricas nativas do Streamlit (são grandes e bonitas por padrão)
                 c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f"""<div class="metric-card"><div class="small-text">ROTA</div><div class="big-text">{row.get('ROTA', '-')}</div></div>""", unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f"""<div class="metric-card"><div class="small-text">LOJA</div><div class="big-text">{row.get('Nº LOJA', '-')}</div></div>""", unsafe_allow_html=True)
-
-                st.markdown(f"""
-                <div class="metric-card" style="background-color: #e3f2fd; border-color: #90caf9;">
-                    <div class="small-text">CHEGADA AZAMBUJA</div>
-                    <div class="big-text" style="color: #0d47a1;">{row.get('Hora chegada Azambuja', '--')}</div>
-                </div>
-                <div class="metric-card" style="background-color: #fff3e0; border-color: #ffcc80;">
-                    <div class="small-text">DESCARGA LOJA</div>
-                    <div class="big-text" style="color: #e65100;">{row.get('Hora descarga loja', '--')}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                c1.metric("ROTA", str(row.get('ROTA', '-')))
+                c2.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                
+                st.markdown("---")
+                k1, k2 = st.columns(2)
+                k1.metric("CHEGADA AZB", str(row.get('Hora chegada Azambuja', '--')))
+                k2.metric("DESCARGA", str(row.get('Hora descarga loja', '--')))
                 
                 if row.get('Retorno'):
                      st.error(f"⚠️ RETORNO: {row.get('Retorno')}")
 
-                with st.expander("📦 VER CARGA"):
-                    cols_check = ["Azambuja Ambiente", "Azambuja Congelados", "Peixe", "Talho", "Total Suportes"]
-                    dados = {"Item": [], "Qtd": []}
+                st.markdown("### 📦 Carga")
+                cols_check = ["Azambuja Ambiente", "Azambuja Congelados", "Peixe", "Talho", "Total Suportes"]
+                dados = {"Item": [], "Qtd": []}
+                for col in cols_check:
+                    val = str(row.get(col, '0'))
+                    if val != '0' and val.lower() != 'nan':
+                        nome_limpo = col.replace("Azambuja ", "").replace("Total ", "")
+                        dados["Item"].append(nome_limpo)
+                        dados["Qtd"].append(val)
+                
+                if dados["Item"]:
+                    st.table(pd.DataFrame(dados).set_index("Item"))
+                else:
+                    st.caption("Sem carga registrada.")
                     
-                    for col in cols_check:
-                        val = str(row.get(col, '0'))
-                        if val != '0' and val.lower() != 'nan':
-                            # Limpa o nome da coluna para ficar bonito
-                            nome_limpo = col.replace("Azambuja ", "").replace("Total ", "")
-                            dados["Item"].append(nome_limpo)
-                            dados["Qtd"].append(val)
-                            
-                    if dados["Item"]:
-                        st.table(pd.DataFrame(dados).set_index("Item"))
-                    else:
-                        st.info("Sem carga registrada.")
-                    
-                    st.caption(f"Local: {row.get('Local descarga','-')}")
+                st.write(f"**Local:** {row.get('Local descarga','-')}")
 
             else:
-                st.error("❌ VPN não encontrada.")
+                st.error(f"❌ VPN '{vpn_input}' não encontrada.")
         else:
-            st.warning("Digite o número.")
+            st.warning("Por favor, digite o número.")
+
 else:
-    st.info("⚠️ Aguardando carregamento da escala.")
+    st.warning("⚠️ O sistema está aguardando o arquivo de rotas.")
