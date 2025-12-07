@@ -40,7 +40,7 @@ st.markdown("""
     .header-title { font-size: 24px; font-weight: bold; margin: 0; }
     .header-date { font-size: 16px; opacity: 0.9; margin-top: 5px; }
     
-    /* Estilo para os blocos de horário ficarem mais cheios */
+    /* Blocos de Horário */
     .time-block {
         background-color: #f8f9fa;
         padding: 15px;
@@ -48,9 +48,29 @@ st.markdown("""
         border-left: 5px solid #004aad;
         margin-bottom: 10px;
     }
-    .time-label { font-size: 0.9rem; color: #666; font-weight: bold; text-transform: uppercase; }
-    .time-value { font-size: 1.8rem; font-weight: bold; color: #333; margin: 5px 0; }
-    .time-location { font-size: 1.1rem; color: #004aad; font-weight: bold; }
+    .time-label { font-size: 0.8rem; color: #666; font-weight: bold; text-transform: uppercase; }
+    .time-value { font-size: 1.5rem; font-weight: bold; color: #333; margin: 5px 0; }
+    .time-location { font-size: 1.0rem; color: #004aad; font-weight: bold; }
+    
+    /* Estilo das Etiquetas Pequenas (Suportes, Retorno, Tipo) */
+    .tag-box {
+        padding: 10px;
+        border-radius: 6px;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        margin-bottom: 5px;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+    .tag-label { font-size: 0.75rem; opacity: 0.9; font-weight: normal; display: block; margin-bottom: 2px; }
+    .tag-value { font-size: 1.1rem; }
+    
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        padding: 8px;
+        border-radius: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,7 +83,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 5. FUNÇÃO DE LEITURA ---
+# --- 5. FUNÇÃO DE LEITURA (Melhorada) ---
 def carregar_dados(uploaded_file):
     try:
         if uploaded_file.name.lower().endswith('xlsx'):
@@ -83,6 +103,10 @@ def carregar_dados(uploaded_file):
         
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
+        
+        # Limpa nomes das colunas (remove espaços extras que causam erro)
+        df.columns = df.columns.astype(str).str.strip()
+        
         df = df.loc[:, df.columns.notna()]
         if 'VPN' in df.columns:
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
@@ -90,7 +114,7 @@ def carregar_dados(uploaded_file):
         return None
     except: return None
 
-# Carrega arquivo
+# Carrega arquivo local
 df = None
 nome = "rotas.csv.xlsx"
 if os.path.exists(nome):
@@ -127,9 +151,10 @@ if df is not None:
             if not res.empty:
                 row = res.iloc[0]
                 
+                # Nome
                 st.info(f"👤 **{row.get('Motorista', '-') }**")
                 
-                # Info Geral
+                # Linha 1: Dados Veículo
                 c1, c2, c3, c4 = st.columns(4)
                 c1.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
                 c2.metric("MÓVEL", str(row.get('Móvel', '-')))
@@ -138,24 +163,18 @@ if df is not None:
                 
                 st.markdown("---")
                 
-                # --- HORÁRIOS COM LOCAIS (AQUI MUDOU) ---
-                # Pegamos o local de descarga para exibir junto da hora
+                # Linha 2: Horários
                 local_descarga = row.get('Local descarga', 'Loja')
                 
                 cc, cd = st.columns(2)
-                
                 with cc:
-                    # Bloco Chegada
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #0d47a1;">
-                        <div class="time-label">CHEGADA</div>
+                        <div class="time-label">CHEGADA AZB</div>
                         <div class="time-value">{row.get('Hora chegada Azambuja', '--')}</div>
-                        <div class="time-location">📍 Azambuja</div>
                     </div>
                     """, unsafe_allow_html=True)
-                
                 with cd:
-                    # Bloco Descarga
                     st.markdown(f"""
                     <div class="time-block" style="border-left-color: #e65100;">
                         <div class="time-label">DESCARGA</div>
@@ -164,15 +183,43 @@ if df is not None:
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Retorno e Tipo
-                cr, ct = st.columns(2)
-                cr.error(f"🔙 **Retorno:** {row.get('Retorno', '--')}")
-                ct.success(f"📋 **Tipo:** {row.get('TIPO', '-')}")
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Linha 3: Suportes, Retorno e Tipo (Estilo Botão Colorido)
+                k1, k2, k3 = st.columns(3)
+                
+                # Suportes (Cor Roxa para destaque)
+                val_suportes = str(row.get('Total Suportes', '0'))
+                with k1:
+                    st.markdown(f"""
+                    <div class="tag-box" style="background-color: #6a1b9a;">
+                        <span class="tag-label">SUPORTES</span>
+                        <span class="tag-value">📦 {val_suportes}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Retorno (Cor Vermelha/Laranja)
+                with k2:
+                    st.markdown(f"""
+                    <div class="tag-box" style="background-color: #ef6c00;">
+                        <span class="tag-label">RETORNO</span>
+                        <span class="tag-value">🔙 {row.get('Retorno', '-')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Tipo (Cor Verde)
+                with k3:
+                    st.markdown(f"""
+                    <div class="tag-box" style="background-color: #2e7d32;">
+                        <span class="tag-label">TIPO</span>
+                        <span class="tag-value">📋 {row.get('TIPO', '-')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                # Carga
-                with st.expander("📦 Ver Carga", expanded=True):
+                # Tabela de Carga Detalhada
+                with st.expander("🔎 Ver Detalhes da Carga", expanded=True):
                     cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
-                            "Frota Refrigerado", "Peixe", "Talho", "Total Suportes"]
+                            "Frota Refrigerado", "Peixe", "Talho"] 
                     dd = {"Cat": [], "Qtd": []}
                     for i in cols:
                         v = str(row.get(i, '0'))
