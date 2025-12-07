@@ -2,22 +2,23 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.set_page_config(page_title="Rotas Logística", page_icon="🚚")
+# Configuração da página
+st.set_page_config(page_title="Minha Rota", page_icon="🚚")
 
-# --- 1. FUNÇÃO DE LEITURA (PREPARADA PARA O SEU ARQUIVO) ---
+# --- 1. FUNÇÃO DE LEITURA (Blindada para rotas.csv.xlsx) ---
 def carregar_dados(uploaded_file):
     try:
-        # Tenta ler como Excel (Pois seu arquivo termina em .xlsx)
+        # Verifica se é Excel
         if uploaded_file.name.lower().endswith('xlsx'):
             df_raw = pd.read_excel(uploaded_file, header=None)
         else:
-            # Fallback para CSV
+            # Verifica se é CSV
             try:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=';', encoding='latin1')
             except:
                 df_raw = pd.read_csv(uploaded_file, header=None, sep=',', encoding='utf-8')
 
-        # Procura o cabeçalho
+        # Procura cabeçalho
         header_idx = -1
         for index, row in df_raw.iterrows():
             linha_txt = row.astype(str).str.cat(sep=' ').lower()
@@ -27,7 +28,7 @@ def carregar_dados(uploaded_file):
         
         if header_idx == -1: return None
         
-        # Ajusta colunas
+        # Ajusta dados
         df_raw.columns = df_raw.iloc[header_idx] 
         df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
         df = df.loc[:, df.columns.notna()]
@@ -40,9 +41,9 @@ def carregar_dados(uploaded_file):
     except:
         return None
 
-# --- 2. CARREGAMENTO AUTOMÁTICO DO ARQUIVO 'rotas.csv.xlsx' ---
+# --- 2. TENTA CARREGAR O ARQUIVO AUTOMATICAMENTE ---
 df = None
-nome_arquivo_oficial = "rotas.csv.xlsx"  # <--- AQUI ESTAVA O ERRO ANTES
+nome_arquivo_oficial = "rotas.csv.xlsx" # O nome exato do seu arquivo
 
 try:
     if os.path.exists(nome_arquivo_oficial):
@@ -51,12 +52,12 @@ try:
             mem = BytesIO(f.read())
             mem.name = nome_arquivo_oficial
             df = carregar_dados(mem)
-except Exception as e:
-    st.error(f"Erro ao tentar abrir o arquivo local: {e}")
+except:
+    pass
 
 # --- 3. BARRA LATERAL (ADMIN) ---
 with st.sidebar:
-    st.header("Área do Gestor")
+    st.header("Gestão")
     if st.text_input("Senha Admin", type="password") == "admin123":
         st.success("Logado")
         upload = st.file_uploader("Carregar Arquivo", type=['xlsx', 'csv'])
@@ -64,55 +65,91 @@ with st.sidebar:
             novo_df = carregar_dados(upload)
             if novo_df is not None:
                 df = novo_df
-                st.success("Atualizado!")
-            else:
-                st.error("Formato inválido.")
+                st.success("Atualizado com sucesso!")
 
-# --- 4. TELA MOTORISTA ---
-st.title("🚚 Consulta de Rotas")
+# --- 4. TELA DO MOTORISTA (COM O LAYOUT PEDIDO) ---
+st.title("🚚 Minha Escala")
 
 if df is not None:
-    st.write("Digite sua VPN:")
-    
-    # Campo de texto que funcionou no teste
-    vpn_input = st.text_input("Número da VPN:", placeholder="Ex: 76628")
-    
-    if st.button("BUSCAR AGORA"):
+    # Usei st.form para evitar que a página fique recarregando enquanto digita
+    with st.form(key='busca'):
+        vpn_input = st.text_input("Digite o número da VPN:", placeholder="Ex: 76628")
+        btn_buscar = st.form_submit_button("🔍 BUSCAR ROTA")
+
+    if btn_buscar:
         vpn_input = vpn_input.strip()
         if vpn_input:
             res = df[df['VPN'] == vpn_input]
+            
             if not res.empty:
                 row = res.iloc[0]
                 
-                st.success(f"Motorista: {row.get('Motorista', '-')}")
+                # --- IDENTIFICAÇÃO ---
+                st.success(f"Motorista: **{row.get('Motorista', '-') }**")
                 
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns(3)
                 c1.metric("ROTA", str(row.get('ROTA', '-')))
                 c2.metric("LOJA", str(row.get('Nº LOJA', '-')))
+                c3.metric("MATRÍCULA", str(row.get('Matrícula', '-')))
                 
-                st.info(f"Chegada: {row.get('Hora chegada Azambuja', '--')}")
-                st.warning(f"Descarga: {row.get('Hora descarga loja', '--')}")
+                st.markdown("---")
                 
-                if row.get('Retorno'):
-                     st.error(f"RETORNO: {row.get('Retorno')}")
+                # --- HORÁRIOS (GRANDES) ---
+                col_h1, col_h2 = st.columns(2)
+                with col_h1:
+                    st.info(f"**Chegada Azambuja**\n\n### {row.get('Hora chegada Azambuja', '--')}")
+                with col_h2:
+                    st.warning(f"**Descarga Loja**\n\n### {row.get('Hora descarga loja', '--')}")
 
-                st.markdown("### 📦 Carga")
-                cols = ["Azambuja Ambiente", "Azambuja Congelados", "Peixe", "Talho", "Total Suportes"]
-                dados = {"Tipo": [], "Qtd": []}
-                for c in cols:
-                    val = str(row.get(c, '0'))
-                    if val != '0' and val.lower() != 'nan':
-                         dados["Tipo"].append(c.replace("Azambuja ","").replace("Total ",""))
-                         dados["Qtd"].append(val)
+                # --- RETORNO E TIPO (PEQUENOS E PRÓXIMOS) ---
+                # Usamos HTML simples para deixá-los menores e lado a lado
+                st.markdown(f"""
+                <div style="display: flex; gap: 20px; margin-top: 10px; padding: 10px; background-color: #f0f2f6; border-radius: 5px;">
+                    <div>
+                        <span style="font-size: 0.8em; color: gray;">RETORNO:</span><br>
+                        <span style="font-weight: bold; color: #d32f2f;">{row.get('Retorno', '--')}</span>
+                    </div>
+                    <div style="border-left: 1px solid #ccc; padding-left: 20px;">
+                        <span style="font-size: 0.8em; color: gray;">TIPO:</span><br>
+                        <span style="font-weight: bold;">{row.get('TIPO', '-')}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.caption(f"📍 Local Descarga: {row.get('Local descarga', '-')}")
+
+                # --- TABELA DE CARGA (DETALHADA) ---
+                st.subheader("📦 Manifesto de Carga")
                 
-                if dados["Tipo"]:
-                    st.table(pd.DataFrame(dados).set_index("Tipo"))
+                # Lista de colunas para verificar
+                cols_carga = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", 
+                              "Frota Refrigerado", "Peixe", "Talho", "Total Suportes"]
+                
+                dados_carga = {"Categoria": [], "Quantidade": []}
+                
+                for item in cols_carga:
+                    qtd = str(row.get(item, '0'))
+                    # Só mostra se tiver quantidade
+                    if qtd != '0' and qtd.lower() != 'nan':
+                        # Limpa o nome para ficar bonito na tabela
+                        nome_bonito = item.replace("Azambuja ", "").replace("Total ", "")
+                        dados_carga["Categoria"].append(nome_bonito)
+                        dados_carga["Quantidade"].append(qtd)
+                
+                if dados_carga["Categoria"]:
+                    st.table(pd.DataFrame(dados_carga).set_index("Categoria"))
                 else:
-                    st.caption("Sem carga especial.")
+                    st.caption("Nenhuma carga específica registrada.")
+                    
+                # WhatsApp
+                if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                     st.info(f"📱 Obs: {row['WhatsApp']}")
+
             else:
-                st.error("VPN não encontrada.")
+                st.error("❌ VPN não encontrada.")
         else:
-            st.warning("Digite o número.")
+            st.warning("⚠️ Digite um número.")
+
 else:
-    st.warning(f"⚠️ O arquivo '{nome_arquivo_oficial}' não foi encontrado no GitHub.")
-    st.info("Dica: Verifique se o nome do arquivo no GitHub é EXATAMENTE 'rotas.csv.xlsx'")
+    st.warning("⚠️ Arquivo 'rotas.csv.xlsx' não encontrado.")
+    st.info("O administrador precisa carregar a escala.")
