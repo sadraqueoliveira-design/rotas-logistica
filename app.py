@@ -14,16 +14,17 @@ ADMINS = {
     "Admin Principal": "admin123",
     "Gestor Tráfego": "trafego2025",
     "Escritório": "office99",
+    # Adicione mais aqui se precisar
 }
 
-# --- 2. ESTILO CSS (CORRIGIDO PARA MOSTRAR MENU) ---
+# --- 2. ESTILO CSS (Compacto e Otimizado) ---
 st.markdown("""
 <style>
-    /* Esconde apenas o rodapé e o menu de 3 pontinhos, mas DEIXA a barra superior para o menu lateral */
+    /* Oculta rodapé e menu de 3 pontos, mas DEIXA o cabeçalho visível para o menu lateral */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    .block-container {padding-top: 1rem; padding-bottom: 2rem;}
+    .block-container {padding-top: 1rem; padding-bottom: 3rem;}
     
     /* Menu Lateral */
     section[data-testid="stSidebar"] { background-color: #f0f2f6; }
@@ -155,4 +156,60 @@ if menu == "🚛 Minha Escala":
                     # Barra Fina (Lógica de Cores)
                     v_sup = '0'
                     for c in df_rotas.columns: 
-                        if "total
+                        if "total suportes" in c.lower(): v_sup = str(row.get(c, '0')); break
+                    
+                    v_ret = str(row.get('Retorno', '-'))
+                    # Ignora zeros e simbolos vazios para a cor verde
+                    cor_ret = "#008000" if v_ret not in ['0','-','nan','Vazio','None','○','o','O'] else "#333"
+                    
+                    st.markdown(f"""
+                    <div class="info-row">
+                        <div class="info-item bg-purple"><span class="info-label">SUPORTES</span><span class="info-val">📦 {v_sup}</span></div>
+                        <div class="info-item-retorno"><span class="info-label-dark">RETORNO</span><span class="info-val" style="color:{cor_ret}">{v_ret}</span></div>
+                        <div class="info-item bg-green"><span class="info-label">TIPO</span><span class="info-val">{row.get('TIPO', '-')}</span></div>
+                    </div>""", unsafe_allow_html=True)
+                    
+                    # Carga
+                    with st.expander(f"🔎 Carga Viagem {i+1}"):
+                        cols = ["Azambuja Ambiente", "Azambuja Congelados", "Salsesen Azambuja", "Frota Refrigerado", "Peixe", "Talho"]
+                        dd = {"Cat": [], "Qtd": []}
+                        for cn in cols:
+                            match = next((c for c in df_rotas.columns if cn.lower() in c.lower()), None)
+                            if match:
+                                v = str(row.get(match, '0'))
+                                if v not in ['0', 'nan']: dd["Cat"].append(cn.replace("Azambuja ","").replace("Total ","")); dd["Qtd"].append(v)
+                        if dd["Cat"]: st.table(pd.DataFrame(dd).set_index("Cat"))
+                        else: st.caption("Vazio")
+                        
+                    if 'WhatsApp' in row and str(row['WhatsApp']).lower() != 'nan':
+                         st.info(f"📱 {row['WhatsApp']}")
+            else: st.error("❌ VPN não encontrada.")
+    else: st.warning("⚠️ Aguardando escala.")
+
+# ==================================================
+# PÁGINA 2: GESTÃO (MULTI ADMIN)
+# ==================================================
+elif menu == "⚙️ Gestão":
+    st.header("🔐 Acesso Restrito")
+    
+    # Login Multi-Usuário
+    usuario = st.selectbox("Selecione seu Usuário", ["Selecionar..."] + list(ADMINS.keys()))
+    senha = st.text_input("Digite sua Senha", type="password")
+    
+    if usuario != "Selecionar..." and senha == ADMINS.get(usuario):
+        st.success(f"Bem-vindo, {usuario}!")
+        st.markdown("---")
+        
+        st.subheader("Atualizar Arquivo de Rotas")
+        up_rotas = st.file_uploader("Selecione o arquivo Excel ou CSV", type=['xlsx','csv'])
+        
+        if up_rotas:
+            df_novo = ler_rotas(up_rotas)
+            if df_novo is not None: 
+                df_rotas = df_novo
+                st.success("✅ Rotas atualizadas com sucesso!")
+            else:
+                st.error("Erro ao ler arquivo.")
+                
+    elif senha:
+        st.error("Senha incorreta!")
