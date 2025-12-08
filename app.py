@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from io import BytesIO
 
-# --- 1. CONFIGURAÇÃO (Fundamental para o menu aparecer) ---
+# --- 1. CONFIGURAÇÃO ---
 st.set_page_config(
     page_title="Logística App", 
     page_icon="🚛", 
@@ -12,16 +12,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ==========================================
-# 🔐 ADMINS
-# ==========================================
+# ADMINS
 ADMINS = {
     "Admin Principal": "admin123",
     "Gestor Tráfego": "trafego2025",
     "Escritório": "office99",
 }
 
-# NOME DOS ARQUIVOS DE DADOS
+# ARQUIVOS
 DB_FILE = "dados_rotas.source" 
 DATE_FILE = "data_manual.txt"
 
@@ -62,7 +60,6 @@ st.markdown("""
     .info-row { display: flex; justify-content: space-between; gap: 6px; margin-top: 15px; margin-bottom: 15px; }
     .info-item { flex: 1; text-align: center; padding: 6px 2px; border-radius: 6px; color: white; font-size: 0.9rem;}
     .info-item-retorno { flex: 1; text-align: center; padding: 5px 2px; border-radius: 6px; background-color: white; border: 1px solid #ddd; }
-    
     .info-label { font-size: 0.65rem; text-transform: uppercase; opacity: 0.9; display: block; margin-bottom: 2px; line-height: 1;}
     .info-label-dark { font-size: 0.65rem; text-transform: uppercase; color: #666; display: block; margin-bottom: 2px; line-height: 1; font-weight: bold;}
     .info-val { font-size: 1.1rem; font-weight: bold; line-height: 1.1; }
@@ -74,69 +71,65 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÃO LEITURA ROBUSTA ---
+# --- 3. FUNÇÃO LEITURA ESPECÍFICA PARA O SEU ARQUIVO ---
 def ler_rotas(file_content):
     try:
         # Tenta ler como Excel ou CSV (vários encodings)
-        try: df_raw = pd.read_excel(file_content, header=None)
+        # IMPORTANTE: header=0 lê a primeira linha (onde diz "Matricula", "Rota", etc.)
+        try: df = pd.read_excel(file_content, header=0)
         except:
             file_content.seek(0)
-            try: df_raw = pd.read_csv(file_content, header=None, sep=';', encoding='latin1')
+            try: df = pd.read_csv(file_content, header=0, sep=';', encoding='latin1')
             except:
                 file_content.seek(0)
-                try: df_raw = pd.read_csv(file_content, header=None, sep=',', encoding='utf-8')
+                try: df = pd.read_csv(file_content, header=0, sep=',', encoding='utf-8')
                 except: 
                     file_content.seek(0)
-                    df_raw = pd.read_csv(file_content, header=None, sep=',', encoding='latin1')
+                    df = pd.read_csv(file_content, header=0, sep=',', encoding='latin1')
 
-        # 1. ENCONTRAR O CABEÇALHO REAL
-        header_idx = -1
-        for index, row in df_raw.iterrows():
-            txt = row.astype(str).str.cat(sep=' ').lower()
-            if "motorista" in txt and "vpn" in txt:
-                header_idx = index
-                break
+        # --- CORREÇÃO DE COLUNAS ---
+        # No seu arquivo:
+        # Coluna indice 1 é o Motorista (mesmo que o cabeçalho diga 'Filtro' ou esteja vazio)
+        # Coluna indice 2 é a VPN
         
-        if header_idx == -1: return None
-
-        # Define colunas e dados
-        df_raw.columns = df_raw.iloc[header_idx]
-        df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
+        cols = list(df.columns)
         
-        # 2. LIMPEZA DOS NOMES DAS COLUNAS (CRUCIAL PARA O SEU ARQUIVO)
-        # Remove espaços extras e converte nomes estranhos
+        # Renomeia forçadamente as colunas vitais pelos indices
+        if len(cols) > 3:
+            df.rename(columns={
+                cols[1]: 'Motorista',
+                cols[2]: 'VPN'
+            }, inplace=True)
+            
+        # Limpa os nomes das outras colunas (remove espaços extras)
         df.columns = df.columns.astype(str).str.strip()
         
-        # Mapa de correção baseado no seu arquivo teste.xlsx
+        # Corrige erros de ortografia comuns no ficheiro
         correcoes = {
-            'Matricula': 'Matrícula',    # Faltava acento
-            'Movél': 'Móvel',            # Acento errado no arquivo original
-            'NºLOJA': 'Nº LOJA',         # Faltava espaço
-            'Local descarga': 'Local descarga', 
-            'Hora descarga loja': 'Hora descarga loja'
+            'Matricula': 'Matrícula',    
+            'Movél': 'Móvel',            
+            'NºLOJA': 'Nº LOJA'
         }
-        # Renomeia se encontrar a chave (ignora maiúsculas/minusculas na busca)
-        cols_atuais = {c.strip(): c for c in df.columns}
         for errado, certo in correcoes.items():
-            # Tenta encontrar correspondencia
-            for c_real in cols_atuais:
+            for c_real in df.columns:
                 if errado.lower() in c_real.lower():
                     df.rename(columns={c_real: certo}, inplace=True)
 
-        # Remove colunas vazias
-        df = df.loc[:, df.columns.notna()]
-        df = df.loc[:, df.columns != 'nan']
-
-        # 3. LIMPEZA DE DADOS
+        # --- FILTRAGEM DE LIXO ---
+        # Remove linhas onde a VPN não é válida
         if 'VPN' in df.columns:
-            # Garante que é string, remove .0 e espaços
-            df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            # Remove linhas inválidas
-            df = df[~df['VPN'].isin(['0', 'nan', '', 'None'])]
-            
+            # Converte para string
+            df['VPN'] = df['VPN'].astype(str)
+            # Remove sufixo .0
+            df['VPN'] = df['VPN'].str.replace(r'\.0$', '', regex=True).str.strip()
+            # Remove linhas vazias, 'nan', '0' ou cabeçalhos repetidos
+            df = df[~df['VPN'].isin(['0', 'nan', '', 'None', 'VPN'])]
+            # Remove linhas onde o Motorista é "Motorista" (cabeçalho secundário)
+            df = df[df['Motorista'] != 'Motorista']
+
         return df
     except Exception as e:
-        st.error(f"Erro técnico: {e}")
+        st.error(f"Erro ao processar: {e}")
         return None
 
 # --- 4. CARREGAMENTO ---
@@ -165,10 +158,10 @@ with st.sidebar:
     st.markdown("---")
     menu = st.radio("Navegação:", ["🏠 Minha Escala", "⚙️ Gestão / Upload"], label_visibility="collapsed")
     
-    # DEBUG - Se houver problemas, ative isto para ver as colunas
     if df_rotas is not None:
-        with st.expander("🛠️ Ver Colunas (Debug)"):
-            st.write(list(df_rotas.columns))
+        st.success(f"Dados carregados: {len(df_rotas)} rotas")
+        # DEBUG: Ative se precisar ver se as colunas 'Motorista' e 'VPN' existem
+        # st.write(df_rotas.columns)
 
 # ==================================================
 # PÁGINA 1: MINHA ESCALA
@@ -189,9 +182,10 @@ if menu == "🏠 Minha Escala":
             btn = st.form_submit_button("🔍 BUSCAR", type="primary")
 
         if btn and vpn:
+            # Filtro exato
             res = df_rotas[df_rotas['VPN'] == vpn.strip()]
             
-            # Busca alternativa por nome
+            # Filtro parcial por nome
             if res.empty and len(vpn) > 3:
                  res = df_rotas[df_rotas['Motorista'].astype(str).str.lower().str.contains(vpn.lower())]
 
@@ -204,7 +198,8 @@ if menu == "🏠 Minha Escala":
                     # 1. MOTORISTA
                     st.markdown(f"""<div class="driver-card">👤 {row.get('Motorista', '-')}</div>""", unsafe_allow_html=True)
                     
-                    # 2. VEÍCULO (Usa nomes corrigidos)
+                    # 2. VEÍCULO 
+                    # Usa get com valor default '-' para não dar erro se coluna faltar
                     matricula = row.get('Matrícula', '-')
                     movel = row.get('Móvel', '-')
                     rota = row.get('ROTA', '-')
@@ -219,15 +214,18 @@ if menu == "🏠 Minha Escala":
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # 3. HORÁRIOS (Procura parciais para garantir)
-                    h_cheg = row.get('Hora chegada Azambuja', '--')
+                    # 3. HORÁRIOS - Busca flexível
+                    # Procura coluna que contenha "chegada" e "azambuja"
+                    h_cheg_col = next((c for c in df_rotas.columns if "chegada" in c.lower() and "azambuja" in c.lower()), 'Hora chegada Azambuja')
+                    h_cheg = row.get(h_cheg_col, '--')
+
+                    # Procura coluna local descarga
+                    loc_col = next((c for c in df_rotas.columns if "local descarga" in c.lower()), 'Local descarga')
+                    loc_desc = str(row.get(loc_col, 'Loja')).upper()
                     
-                    # Tenta encontrar a coluna de local de descarga mesmo com espaços
-                    local_key = next((k for k in row.index if 'local descarga' in k.lower()), 'Local descarga')
-                    loc_desc = str(row.get(local_key, 'Loja')).upper()
-                    
-                    hora_desc_key = next((k for k in row.index if 'hora descarga loja' in k.lower()), 'Hora descarga loja')
-                    h_desc = row.get(hora_desc_key, '--')
+                    # Procura hora descarga
+                    h_desc_col = next((c for c in df_rotas.columns if "hora descarga" in c.lower()), 'Hora descarga loja')
+                    h_desc = row.get(h_desc_col, '--')
                     
                     cc, cd = st.columns(2)
                     with cc: 
