@@ -56,3 +56,4 @@ export const ScheduleResult = ({ route }: ScheduleResultProps) => {
     </div>
   );
 };
+
