@@ -1,59 +1,117 @@
-// src/components/ScheduleResult.tsx
-import { RouteData } from "@/types/route";
-import { Truck, MapPin, Clock, User, Hash } from "lucide-react";
+import streamlit as st
+import pandas as pd
+import csv
+from io import StringIO
 
-interface ScheduleResultProps {
-  route: RouteData;
-}
+# Configuração da página
+st.set_page_config(page_title="Pesquisa de Rotas", page_icon="🚚")
 
-export const ScheduleResult = ({ route }: ScheduleResultProps) => {
-  return (
-    <div className="bg-card text-card-foreground rounded-lg p-6 shadow-sm border border-border animate-fade-in">
-      
-      {/* Cabeçalho do Card: Motorista e VPN */}
-      <div className="flex justify-between items-start mb-4 border-b border-border pb-4">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
-            {route.motorista}
-          </h3>
-          <span className="text-sm text-muted-foreground ml-7">VPN: {route.vpn}</span>
-        </div>
-        <div className="text-right">
-             <div className="flex items-center gap-1 text-primary font-mono font-bold bg-primary/10 px-2 py-1 rounded">
-                <Truck className="w-4 h-4" />
-                {route.matricula}
-             </div>
-        </div>
-      </div>
-
-      {/* Detalhes da Rota */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+def load_data(uploaded_file):
+    """
+    Lê o ficheiro CSV, limpa as linhas 'sujas' (com 0) e organiza as colunas.
+    """
+    routes = []
+    
+    # Decodifica o arquivo carregado
+    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    
+    # Lê linha a linha para ter controlo total (como fizemos no React)
+    reader = csv.reader(stringio, delimiter=',')
+    
+    for row in reader:
+        # Garante que a linha tem colunas suficientes
+        if len(row) < 10:
+            continue
+            
+        # Mapeamento das colunas baseado no seu ficheiro 'teste.xlsx - Folha1.csv'
+        # Col 1: Motorista, Col 2: VPN, Col 3: Matricula, Col 5: Rota
+        motorista = row[1].strip()
+        vpn = row[2].strip()
         
-        {/* Localização */}
-        <div className="space-y-3">
-            <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-                <div>
-                    <p className="font-medium">{route.local}</p>
-                    <p className="text-xs text-muted-foreground">Rota: {route.rota} | Loja/Cais: {route.nLoja}</p>
-                </div>
-            </div>
-        </div>
+        # Lógica de filtragem (igual ao React):
+        # 1. Ignorar cabeçalhos ("Motorista")
+        # 2. Ignorar linhas de rodapé com '0'
+        if motorista == "Motorista" or not vpn or vpn == "0":
+            continue
+            
+        # Verifica se VPN é numérico (para evitar lixo)
+        if not vpn.isdigit():
+            continue
 
-        {/* Horários */}
-        <div className="space-y-3">
-             <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-muted-foreground" />
-                <div className="text-sm">
-                    <p><span className="text-muted-foreground">Chegada Azambuja:</span> <span className="font-mono">{route.horaChegada}</span></p>
-                    <p><span className="text-muted-foreground">Descarga Loja:</span> <span className="font-mono font-semibold">{route.horaDescarga}</span></p>
-                </div>
-            </div>
-        </div>
+        # Cria o objeto de dados
+        routes.append({
+            "motorista": motorista,
+            "vpn": vpn,
+            "matricula": row[3].strip(),
+            "rota": row[5].strip(),
+            "nLoja": row[6].strip(),
+            "horaChegada": row[7].strip(),
+            "local": row[8].strip(),
+            "horaDescarga": row[9].strip(),
+            "tipo": row[11].strip() if len(row) > 11 else ""
+        })
+            
+    return routes
 
-      </div>
-    </div>
-  );
-};
+# --- Interface Gráfica (Streamlit) ---
 
+st.title("🚚 Pesquisa de Rotas")
+
+# Upload do Arquivo
+uploaded_file = st.sidebar.file_uploader("Carregar Planilha (.csv)", type=["csv"])
+
+if uploaded_file:
+    # Carrega os dados
+    try:
+        data = load_data(uploaded_file)
+        st.sidebar.success(f"{len(data)} rotas carregadas.")
+        
+        # Campo de Pesquisa
+        vpn_search = st.text_input("Digite a VPN ou Nome do Motorista", placeholder="Ex: 76628")
+        
+        if vpn_search:
+            # Filtra os dados
+            search_term = vpn_search.lower()
+            results = [
+                r for r in data 
+                if search_term in r['vpn'].lower() or search_term in r['motorista'].lower()
+            ]
+            
+            if results:
+                st.write(f"Encontradas **{len(results)}** rotas:")
+                
+                # Exibe cada resultado como um "Card"
+                for item in results:
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 10px; background-color: #262730; color: white;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <strong style="font-size: 1.1em;">👤 {item['motorista']}</strong><br>
+                                    <span style="color: #aaa;">VPN: {item['vpn']}</span>
+                                </div>
+                                <div style="background-color: #ff4b4b; padding: 4px 8px; border-radius: 5px; font-weight: bold;">
+                                    🚛 {item['matricula']}
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <p><strong>📍 {item['local']}</strong></p>
+                                    <p style="font-size: 0.9em; color: #ccc;">Rota: {item['rota']} | Loja: {item['nLoja']}</p>
+                                </div>
+                                <div>
+                                    <p>🕒 Chegada Azambuja: <code>{item['horaChegada']}</code></p>
+                                    <p>📦 Descarga Loja: <code>{item['horaDescarga']}</code></p>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.warning("Nenhuma rota encontrada para essa VPN.")
+        else:
+            st.info("Digite uma VPN acima para buscar.")
+            
+    except Exception as e:
+        st.error(f"Erro ao processar o arquivo: {e}")
+else:
+    st.info("Por favor, carregue o arquivo CSV na barra lateral para começar.")
