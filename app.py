@@ -67,15 +67,17 @@ st.markdown("""
     .bg-purple { background-color: #7b1fa2; } .bg-green { background-color: #388e3c; }
     .rota-separator { text-align: center; margin: 30px 0 15px 0; font-size: 1rem; font-weight: bold; color: #004aad; background-color: #e3f2fd; padding: 8px; border-radius: 6px; border: 1px dashed #004aad;}
     
+    /* Tabela de Carga */
+    .carga-box { background-color: #fff; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-top: 10px; }
+    .carga-title { font-size: 0.8rem; font-weight: bold; color: #444; margin-bottom: 5px; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    
     button[kind="primary"] { width: 100%; border-radius: 8px; height: 50px; font-weight: bold; font-size: 18px !important;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÃO LEITURA ESPECÍFICA PARA O SEU ARQUIVO ---
+# --- 3. FUNÇÃO LEITURA ---
 def ler_rotas(file_content):
     try:
-        # Tenta ler como Excel ou CSV (vários encodings)
-        # IMPORTANTE: header=0 lê a primeira linha (onde diz "Matricula", "Rota", etc.)
         try: df = pd.read_excel(file_content, header=0)
         except:
             file_content.seek(0)
@@ -87,44 +89,25 @@ def ler_rotas(file_content):
                     file_content.seek(0)
                     df = pd.read_csv(file_content, header=0, sep=',', encoding='latin1')
 
-        # --- CORREÇÃO DE COLUNAS ---
-        # No seu arquivo:
-        # Coluna indice 1 é o Motorista (mesmo que o cabeçalho diga 'Filtro' ou esteja vazio)
-        # Coluna indice 2 é a VPN
-        
+        # Renomeia colunas chave
         cols = list(df.columns)
-        
-        # Renomeia forçadamente as colunas vitais pelos indices
         if len(cols) > 3:
-            df.rename(columns={
-                cols[1]: 'Motorista',
-                cols[2]: 'VPN'
-            }, inplace=True)
+            df.rename(columns={cols[1]: 'Motorista', cols[2]: 'VPN'}, inplace=True)
             
-        # Limpa os nomes das outras colunas (remove espaços extras)
+        # Limpa nomes das colunas (remove espaços extras)
         df.columns = df.columns.astype(str).str.strip()
         
-        # Corrige erros de ortografia comuns no ficheiro
-        correcoes = {
-            'Matricula': 'Matrícula',    
-            'Movél': 'Móvel',            
-            'NºLOJA': 'Nº LOJA'
-        }
+        # Correções de nomes
+        correcoes = {'Matricula': 'Matrícula', 'Movél': 'Móvel', 'NºLOJA': 'Nº LOJA'}
         for errado, certo in correcoes.items():
             for c_real in df.columns:
                 if errado.lower() in c_real.lower():
                     df.rename(columns={c_real: certo}, inplace=True)
 
-        # --- FILTRAGEM DE LIXO ---
-        # Remove linhas onde a VPN não é válida
+        # Filtra Lixo
         if 'VPN' in df.columns:
-            # Converte para string
-            df['VPN'] = df['VPN'].astype(str)
-            # Remove sufixo .0
-            df['VPN'] = df['VPN'].str.replace(r'\.0$', '', regex=True).str.strip()
-            # Remove linhas vazias, 'nan', '0' ou cabeçalhos repetidos
+            df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             df = df[~df['VPN'].isin(['0', 'nan', '', 'None', 'VPN'])]
-            # Remove linhas onde o Motorista é "Motorista" (cabeçalho secundário)
             df = df[df['Motorista'] != 'Motorista']
 
         return df
@@ -157,11 +140,7 @@ with st.sidebar:
     st.markdown("<h1 style='text-align: center;'>🚛 LOGÍSTICA</h1>", unsafe_allow_html=True)
     st.markdown("---")
     menu = st.radio("Navegação:", ["🏠 Minha Escala", "⚙️ Gestão / Upload"], label_visibility="collapsed")
-    
-    if df_rotas is not None:
-        st.success(f"Dados carregados: {len(df_rotas)} rotas")
-        # DEBUG: Ative se precisar ver se as colunas 'Motorista' e 'VPN' existem
-        # st.write(df_rotas.columns)
+    if df_rotas is not None: st.success(f"Dados carregados: {len(df_rotas)} rotas")
 
 # ==================================================
 # PÁGINA 1: MINHA ESCALA
@@ -182,56 +161,38 @@ if menu == "🏠 Minha Escala":
             btn = st.form_submit_button("🔍 BUSCAR", type="primary")
 
         if btn and vpn:
-            # Filtro exato
             res = df_rotas[df_rotas['VPN'] == vpn.strip()]
-            
-            # Filtro parcial por nome
             if res.empty and len(vpn) > 3:
                  res = df_rotas[df_rotas['Motorista'].astype(str).str.lower().str.contains(vpn.lower())]
 
             if not res.empty:
                 total = len(res)
                 for i, (idx, row) in enumerate(res.iterrows()):
-                    if total > 1: 
-                        st.markdown(f"<div class='rota-separator'>📍 VIAGEM {i+1} de {total}</div>", unsafe_allow_html=True)
+                    if total > 1: st.markdown(f"<div class='rota-separator'>📍 VIAGEM {i+1} de {total}</div>", unsafe_allow_html=True)
                     
                     # 1. MOTORISTA
                     st.markdown(f"""<div class="driver-card">👤 {row.get('Motorista', '-')}</div>""", unsafe_allow_html=True)
                     
-                    # 2. VEÍCULO 
-                    # Usa get com valor default '-' para não dar erro se coluna faltar
-                    matricula = row.get('Matrícula', '-')
-                    movel = row.get('Móvel', '-')
-                    rota = row.get('ROTA', '-')
-                    nloja = row.get('Nº LOJA', '-')
-                    
+                    # 2. VEÍCULO
                     st.markdown(f"""
                     <div class="vehicle-grid">
-                        <div class="vehicle-item"><div class="vehicle-label">MATRÍCULA</div><div class="vehicle-val">{matricula}</div></div>
-                        <div class="vehicle-item"><div class="vehicle-label">MÓVEL</div><div class="vehicle-val">{movel}</div></div>
-                        <div class="vehicle-item"><div class="vehicle-label">ROTA</div><div class="vehicle-val">{rota}</div></div>
-                        <div class="vehicle-item"><div class="vehicle-label">LOJA</div><div class="vehicle-val">{nloja}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">MATRÍCULA</div><div class="vehicle-val">{row.get('Matrícula', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">MÓVEL</div><div class="vehicle-val">{row.get('Móvel', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">ROTA</div><div class="vehicle-val">{row.get('ROTA', '-')}</div></div>
+                        <div class="vehicle-item"><div class="vehicle-label">LOJA</div><div class="vehicle-val">{row.get('Nº LOJA', '-')}</div></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # 3. HORÁRIOS - Busca flexível
-                    # Procura coluna que contenha "chegada" e "azambuja"
-                    h_cheg_col = next((c for c in df_rotas.columns if "chegada" in c.lower() and "azambuja" in c.lower()), 'Hora chegada Azambuja')
-                    h_cheg = row.get(h_cheg_col, '--')
-
-                    # Procura coluna local descarga
+                    # 3. HORÁRIOS
+                    h_cheg_col = next((c for c in df_rotas.columns if "chegada" in c.lower()), 'Hora chegada Azambuja')
                     loc_col = next((c for c in df_rotas.columns if "local descarga" in c.lower()), 'Local descarga')
+                    h_desc_col = next((c for c in df_rotas.columns if "hora descarga" in c.lower()), 'Hora descarga loja')
+                    
                     loc_desc = str(row.get(loc_col, 'Loja')).upper()
                     
-                    # Procura hora descarga
-                    h_desc_col = next((c for c in df_rotas.columns if "hora descarga" in c.lower()), 'Hora descarga loja')
-                    h_desc = row.get(h_desc_col, '--')
-                    
                     cc, cd = st.columns(2)
-                    with cc: 
-                        st.markdown(f"""<div class="time-block" style="border-left-color: #0d47a1;"><div class="time-label">CHEGADA</div><div class="time-value">{h_cheg}</div><div class="location-highlight text-blue">AZAMBUJA</div></div>""", unsafe_allow_html=True)
-                    with cd: 
-                        st.markdown(f"""<div class="time-block" style="border-left-color: #d32f2f;"><div class="time-label">DESCARGA</div><div class="time-value">{h_desc}</div><div class="location-highlight text-red">{loc_desc}</div></div>""", unsafe_allow_html=True)
+                    with cc: st.markdown(f"""<div class="time-block" style="border-left-color: #0d47a1;"><div class="time-label">CHEGADA</div><div class="time-value">{row.get(h_cheg_col, '--')}</div><div class="location-highlight text-blue">AZAMBUJA</div></div>""", unsafe_allow_html=True)
+                    with cd: st.markdown(f"""<div class="time-block" style="border-left-color: #d32f2f;"><div class="time-label">DESCARGA</div><div class="time-value">{row.get(h_desc_col, '--')}</div><div class="location-highlight text-red">{loc_desc}</div></div>""", unsafe_allow_html=True)
                     
                     # 4. INFO EXTRA
                     v_sup = '0'
@@ -248,12 +209,37 @@ if menu == "🏠 Minha Escala":
                         <div class="info-item bg-green"><span class="info-label">TIPO</span><span class="info-val">{row.get('TIPO', '-')}</span></div>
                     </div>""", unsafe_allow_html=True)
 
-            else: 
-                st.error(f"❌ Nenhuma rota encontrada para: {vpn}")
+                    # 5. CARGAS (CORRIGIDO)
+                    # Palavras chave para identificar colunas de carga no seu arquivo
+                    keywords_carga = ["ambiente", "congelados", "salvesen", "fruta", "refrigerado", "peixe", "talho", "recolha"]
+                    
+                    carga_dict = {}
+                    for col in df_rotas.columns:
+                        # Ignora colunas de tempo ou identificação
+                        if any(x in col.lower() for x in ["hora", "chegada", "descarga", "motorista", "vpn", "matricula", "rota", "loja", "tipo", "retorno", "total suportes"]):
+                            continue
+                        
+                        # Se o nome da coluna contiver uma das palavras chave
+                        if any(k in col.lower() for k in keywords_carga):
+                            val = str(row.get(col, '0')).strip()
+                            if val not in ['0', 'nan', '', '0.0', 'None']:
+                                # Limpa o nome da coluna para ficar bonito (remove "Azambuja" repetido)
+                                clean_name = col.replace("Azambuja", "").replace("Total", "").strip()
+                                if clean_name == "": clean_name = col
+                                carga_dict[clean_name] = val
+                    
+                    if carga_dict:
+                        st.markdown('<div class="carga-box"><div class="carga-title">📦 DETALHES DA CARGA</div>', unsafe_allow_html=True)
+                        df_carga = pd.DataFrame(list(carga_dict.items()), columns=["Categoria", "Qtd"])
+                        st.table(df_carga.set_index("Categoria"))
+                        st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        st.caption("ℹ️ Sem carga especificada.")
+
+            else: st.error(f"❌ Não encontrado: {vpn}")
         else:
-            if not btn: st.info("👆 Digite a VPN acima e clique em VER ROTAS.")
-    else:
-        st.warning("⚠️ Nenhuma escala carregada.")
+            if not btn: st.info("👆 Digite a VPN acima.")
+    else: st.warning("⚠️ Nenhuma escala carregada.")
 
 # ==================================================
 # PÁGINA 2: GESTÃO
@@ -266,27 +252,20 @@ elif menu == "⚙️ Gestão / Upload":
     
     if usuario != "Selecionar..." and senha == ADMINS.get(usuario):
         st.success(f"🔓 {usuario}")
-        
-        # DATA
-        st.subheader("1. Data da Escala")
-        nova_data = st.date_input("Data:", value=data_final)
+        nova_data = st.date_input("Data da Escala:", value=data_final)
         if st.button("💾 Atualizar Data"):
             with open(DATE_FILE, "w") as f: f.write(str(nova_data))
-            st.success("Data salva! Atualize a página.")
+            st.success("Data salva!"); st.rerun()
 
-        # UPLOAD
-        st.subheader("2. Upload Arquivo")
-        up_rotas = st.file_uploader("Excel ou CSV", type=['xlsx','csv'])
+        st.markdown("---")
+        up_rotas = st.file_uploader("Carregar Planilha (Excel/CSV)", type=['xlsx','csv'])
         if up_rotas:
             df_preview = ler_rotas(up_rotas)
             if df_preview is not None:
-                st.write(f"✅ {len(df_preview)} linhas válidas identificadas.")
+                st.write(f"✅ {len(df_preview)} linhas identificadas.")
                 st.dataframe(df_preview.head(3))
                 if st.button("🚀 CONFIRMAR UPLOAD"):
                     with open(DB_FILE, "wb") as f: f.write(up_rotas.getbuffer())
-                    st.success("Arquivo gravado!")
-                    st.balloons()
-            else:
-                st.error("Erro na leitura. Verifique o formato.")
-    elif senha: 
-        st.error("⛔ Senha incorreta!")
+                    st.success("Arquivo gravado!"); st.balloons()
+            else: st.error("Erro na leitura.")
+    elif senha: st.error("⛔ Senha incorreta!")
