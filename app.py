@@ -27,27 +27,32 @@ st.markdown("""
 # --- FUNÇÃO DE LEITURA ---
 def ler_rotas(file_content):
     try:
-        df = pd.read_excel(file_content, header=0)
+        # força openpyxl
+        df = pd.read_excel(file_content, header=0, engine="openpyxl")
 
-        # Força coluna C como VPN
+        # força coluna C como VPN
         col_vpn = df.columns[2]
         df.rename(columns={col_vpn: "VPN"}, inplace=True)
 
-        # Normaliza VPN
-        df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).strip()
+        df["VPN"] = (
+            df["VPN"].astype(str)
+            .str.replace(r"\.0$", "", regex=True)
+            .str.strip()
+        )
 
         return df
+
     except Exception as e:
         st.error(f"Erro ao ler arquivo: {e}")
         return None
 
 # --- VARIÁVEIS ---
-DB_FILE = "dados_rotas.source" 
+DB_FILE = "dados_rotas.source"
 DATE_FILE = "data_manual.txt"
 
 # --- DATA ---
 if os.path.exists(DATE_FILE):
-    with open(DATE_FILE, "r") as f: 
+    with open(DATE_FILE, "r") as f:
         dt = datetime.strptime(f.read().strip(), "%Y-%m-%d")
 else:
     dt = datetime.now()
@@ -76,7 +81,7 @@ if menu == "Escala":
             btn = c2.form_submit_button("BUSCAR")
 
         if btn and vpn:
-            res = df_rotas[df_rotas['VPN'] == vpn.strip()]
+            res = df_rotas[df_rotas["VPN"] == vpn.strip()]
 
             if res.empty:
                 st.error("VPN não encontrado.")
@@ -85,15 +90,14 @@ if menu == "Escala":
                     st.markdown("---")
                     st.markdown(f'<div class="driver-card">👤 {row["Motorista"]}</div>', unsafe_allow_html=True)
 
-                    # Veículos
-                    st.markdown(f'''
+                    st.markdown(f"""
                     <div class="vehicle-grid">
                         <div class="vehicle-item"><div>MATRÍCULA</div><div class="vehicle-val">{row.get('Matrícula', '-')}</div></div>
                         <div class="vehicle-item"><div>MÓVEL</div><div class="vehicle-val">{row.get('Móvel', '-')}</div></div>
                         <div class="vehicle-item"><div>ROTA</div><div class="vehicle-val">{row.get('ROTA', '-')}</div></div>
                         <div class="vehicle-item"><div>LOJA</div><div class="vehicle-val">{row.get('Nº LOJA', '-')}</div></div>
                     </div>
-                    ''', unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
 # --- GESTÃO ---
 elif menu == "Gestão":
@@ -101,6 +105,7 @@ elif menu == "Gestão":
 
     senha = st.text_input("Senha", type="password")
     if senha == "123":
+
         data_nova = st.date_input("Data", value=dt)
 
         if st.button("Salvar Data"):
