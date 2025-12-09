@@ -27,66 +27,81 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LEITURA INTELIGENTE ---
+# --- 3. FUNÇÃO DE LEITURA ---
 def ler_rotas(file_content):
     try:
-        # Tenta ler com diferentes configurações
-        try: df_raw = pd.read_csv(file_content, header=None, sep=',', encoding='utf-8')
+        # Tenta ler CSV com diferentes configurações
+        try: df = pd.read_csv(file_content, header=0, sep=',', encoding='utf-8')
         except:
             file_content.seek(0)
-            try: df_raw = pd.read_csv(file_content, header=None, sep=';', encoding='latin1')
+            try: df = pd.read_csv(file_content, header=0, sep=';', encoding='latin1')
             except:
                 file_content.seek(0)
-                try: df_raw = pd.read_csv(file_content, header=None, sep=',', encoding='latin1')
+                try: df = pd.read_csv(file_content, header=0, sep=',', encoding='latin1')
                 except: return None 
 
-        # Procura a linha de cabeçalho correta
-        header_idx = -1
-        for i, row in df_raw.head(10).iterrows():
-            txt = row.astype(str).str.lower().str.cat(sep=' ')
-            if 'motorista' in txt and 'vpn' in txt:
-                header_idx = i
-                break
-        
-        if header_idx == -1: 
-            # Fallback: se não achar, assume linha 0
-            header_idx = 0
-
-        df_raw.columns = df_raw.iloc[header_idx]
-        df = df_raw.iloc[header_idx+1:].reset_index(drop=True)
-
-        # Limpeza de Nomes
+        # --- LIMPEZA DE NOMES DAS COLUNAS ---
+        # 1. Remove espaços no início/fim ("Motorista " -> "Motorista")
         df.columns = df.columns.astype(str).str.strip()
-        mapa = {
-            'Matricula': 'Matrícula', 'Movél': 'Móvel', 
-            'NºLOJA': 'Nº LOJA', 'Talho': 'Carne',
-            'Motorista ': 'Motorista'
+        
+        # 2. Mapa de Correção (baseado no seu ficheiro)
+        mapa_correcao = {
+            'Matricula': 'Matrícula', 
+            'Movél': 'Móvel', 
+            'NºLOJA': 'Nº LOJA',
+            'Motorista': 'Motorista', 
+            'VPN': 'VPN',
+            'Talho': 'Carne' 
         }
-        for real in df.columns:
-            for k, v in mapa.items():
-                if k.lower() in real.lower():
-                    df.rename(columns={real: v}, inplace=True)
+        
+        # Aplica correções de nomes
+        for col_real in df.columns:
+            for errado, certo in mapa_correcao.items():
+                if errado.lower() in col_real.lower():
+                    df.rename(columns={col_real: certo}, inplace=True)
 
-        # Filtros
+        # --- FILTRAGEM DE DADOS ---
         if 'VPN' in df.columns:
+            # Remove sufixo .0 e converte para texto
             df['VPN'] = df['VPN'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            # Remove linhas vazias ou lixo
             df = df[~df['VPN'].isin(['0', 'nan', '', 'None', 'VPN'])]
+            # Garante que tem motorista
             if 'Motorista' in df.columns:
                 df = df[df['Motorista'].notna()]
 
         return df
+
     except Exception as e:
-        st.error(f"Erro: {e}")
+        st.error(f"Erro ao ler ficheiro: {e}")
         return None
 
-# --- DADOS E VARIÁVEIS ---
+# --- VARIÁVEIS ---
 DB_FILE = "dados_rotas.source" 
 DATE_FILE = "data_manual.txt"
 ADMINS = {"Admin": "123", "Gestor": "2025"}
 
+# --- LÓGICA DE DATA ---
+# Verifica se existe ficheiro de data, senão usa hoje
 if os.path.exists(DATE_FILE):
-    with open(DATE_FILE, "r") as f: dt = datetime.strptime(f.read().strip(), "%Y-%m-%d")
-else: dt = datetime.now()
+    try:
+        with open(DATE_FILE, "r") as f: 
+            dt = datetime.strptime(f.read().strip(), "%Y-%m-%d")
+    except: dt = datetime.now()
+else: 
+    dt = datetime.now()
 
+# --- CARREGAR DADOS ---
 df_rotas = None
-if os.path.
+if os.path.exists(DB_FILE):
+    with open(DB_FILE, "rb") as f: df_rotas = ler_rotas(BytesIO(f.read()))
+
+# --- INTERFACE ---
+with st.sidebar:
+    st.header("🚛 MENU")
+    menu = st.radio("Ir para:", ["Escala", "Gestão"], label_visibility="collapsed")
+    if df_rotas is not None: 
+        st.success(f"Rotas: {len(df_rotas)}")
+
+if menu == "Escala":
+    st.markdown(f'<div class="header-box
